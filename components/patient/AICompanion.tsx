@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getAICompanionChatResponse } from '../../services/geminiService';
 import { useAppContext } from '../../context/AppContext';
@@ -44,14 +41,12 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [lastDetectedEmotion, setLastDetectedEmotion] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
-  // fix: Initialize useRef with `undefined` to provide the required initial value.
-  const detectionIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const detectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // fix: Use an inline arrow function for useEffect to align with best practices and prevent potential issues.
   useEffect(() => {
     scrollToBottom();
   }, [messages]);

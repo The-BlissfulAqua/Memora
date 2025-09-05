@@ -20,5 +20,4 @@ const ForkKnifeIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// fix: Add missing default export
 export default ForkKnifeIcon;

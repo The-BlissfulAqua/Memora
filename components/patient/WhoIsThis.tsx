@@ -70,8 +70,8 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
             memories.map(async (memory) => {
                 const descriptions = [];
                 try {
-                    // Using a different CORS proxy for unsplash images as the previous one was blocked.
-                    const img = await faceapi.fetchImage(`https://api.allorigins.win/raw?url=${encodeURIComponent(memory.imageUrl)}`);
+                    // Using a more robust CORS proxy for unsplash images.
+                    const img = await faceapi.fetchImage(`https://corsproxy.io/?${encodeURIComponent(memory.imageUrl)}`);
                     const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
                     if (detections) {
                         descriptions.push(detections.descriptor);

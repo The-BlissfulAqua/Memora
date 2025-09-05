@@ -19,5 +19,4 @@ const GlassWaterIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// fix: Add missing default export
 export default GlassWaterIcon;
