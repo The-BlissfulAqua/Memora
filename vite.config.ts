@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
   const useMkcert = fs.existsSync(keyPath) && fs.existsSync(certPath);
 
   // fix: Explicitly type `httpsconfig` with `HttpsServerOptions` to resolve type error.
-  let httpsConfig: boolean | HttpsServerOptions;
+  let httpsConfig: HttpsServerOptions;
 
   if (useMkcert) {
     // If files are found, use them for a trusted local HTTPS server (ideal for mobile).
@@ -26,10 +26,12 @@ export default defineConfig(({ mode }) => {
       minVersion: 'TLSv1.2',
     };
   } else {
-    // If not found, fall back to Vite's default self-signed certificate (good for desktop).
+    // If not found, fall back to Vite's default self-signed certificate but enforce a secure protocol.
     console.log('⚠️ Could not find mkcert certificates. Using Vite\'s default certificate for HTTPS.');
     console.log('   For mobile testing, follow the one-time setup in README.md.');
-    httpsConfig = true; 
+    httpsConfig = {
+      minVersion: 'TLSv1.2',
+    }; 
   }
 
   return {

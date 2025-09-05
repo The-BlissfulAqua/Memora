@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getAICompanionChatResponse } from '../../services/geminiService';
 import { useAppContext } from '../../context/AppContext';
@@ -42,6 +43,7 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [lastDetectedEmotion, setLastDetectedEmotion] = useState('');
+  const [cameraError, setCameraError] = useState<string | null>(null);
   // fix: Initialize useRef with `undefined` to provide the required initial value.
   const detectionIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
@@ -95,8 +97,20 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
     
     const startVideo = () => {
         navigator.mediaDevices.getUserMedia({ video: {} })
-            .then(stream => { if (videoRef.current) videoRef.current.srcObject = stream; })
-            .catch(err => console.error("Error starting video stream:", err));
+            .then(stream => { 
+              if (videoRef.current) videoRef.current.srcObject = stream;
+              setCameraError(null);
+            })
+            .catch(err => {
+                console.error("Error starting video stream:", err);
+                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    setCameraError("Camera access denied. Emotion detection is disabled. Please allow access in browser settings.");
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                     setCameraError("No camera found on this device. Emotion detection is unavailable.");
+                } else {
+                    setCameraError("Could not start camera. Emotion detection is unavailable.");
+                }
+            });
     };
     startVideo();
 
@@ -168,12 +182,16 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
             </div>
         </div>
         <div className="flex items-center gap-4">
-             {lastDetectedEmotion && (
-                <div className="text-right text-xs">
-                    <p className="text-slate-400">Feeling:</p>
-                    <p className="font-semibold text-white capitalize">{lastDetectedEmotion}</p>
-                </div>
-            )}
+             {cameraError ? (
+                <div className="text-right text-xs text-yellow-400 max-w-xs">{cameraError}</div>
+             ) : (
+                lastDetectedEmotion && (
+                    <div className="text-right text-xs">
+                        <p className="text-slate-400">Feeling:</p>
+                        <p className="font-semibold text-white capitalize">{lastDetectedEmotion}</p>
+                    </div>
+                )
+             )}
         </div>
       </header>
       
