@@ -15,6 +15,8 @@ export default defineConfig(({ mode }) => {
       https: {
         key: fs.readFileSync('./localhost-key.pem'),
         cert: fs.readFileSync('./localhost.pem'),
+        // Enforce a modern, widely-supported TLS version to fix cipher negotiation errors.
+        minVersion: 'TLSv1.2',
       },
       host: true,  // Expose to the network to allow access from mobile devices
     },
