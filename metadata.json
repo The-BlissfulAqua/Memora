@@ -1,6 +1,6 @@
 {
-  "name": "Copy of Copy of Memora: AI Dementia Companion",
-  "description": "An AI and AR-powered companion app to assist dementia patients. Includes a Patient View for daily tasks, a Caregiver dashboard to manage care, and a Family dashboard to stay connected with shared memories and real-time updates.",
+  "name": "[RJ] Copy of Copy of Memora: AI Dementia Companion",
+  "description": "An AI and AR-powered companion app to assist dementia patients. ",
   "requestFramePermissions": [
     "camera",
     "microphone"

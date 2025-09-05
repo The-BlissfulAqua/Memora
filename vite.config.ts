@@ -7,11 +7,13 @@ import type { ServerOptions as HttpsServerOptions } from 'https';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env variables from .env file
-  const env = loadEnv(mode, process.cwd(), '');
+  // fix: Replace process.cwd() with path.resolve() to get the current working directory without Node.js type conflicts.
+  const env = loadEnv(mode, path.resolve(), '');
 
   // Check if mkcert-generated certificate files exist in the project root.
-  const keyPath = path.resolve(__dirname, './localhost-key.pem');
-  const certPath = path.resolve(__dirname, './localhost.pem');
+  // fix: Remove __dirname as path.resolve() defaults to the CWD, which is the project root where vite.config.ts lives.
+  const keyPath = path.resolve('./localhost-key.pem');
+  const certPath = path.resolve('./localhost.pem');
   const useMkcert = fs.existsSync(keyPath) && fs.existsSync(certPath);
 
   // fix: Explicitly type `httpsconfig` with `HttpsServerOptions` to resolve type error.

@@ -26,25 +26,34 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
   // State for AR view
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null); // To hold the active camera stream
   const [heading, setHeading] = useState<number | null>(null);
   const [arError, setArError] = useState<string | null>(null);
   const [arStep, setArStep] = useState(0); // For simulating walking progress
 
-  // Effect for AR setup (camera and compass)
+  // Effect for setting up and tearing down AR features (camera and compass)
   useEffect(() => {
     if (navState !== 'NAVIGATING') {
       return;
     }
 
-    let stream: MediaStream | null = null;
     let isMounted = true;
+    let orientationCleanup: (() => void) | null = null;
 
-    const startAR = async () => {
+    const startARListeners = async () => {
         setArError(null); // Clear previous errors
+
+        // The stream should have been acquired by the button click. Assign it.
+        if (isMounted && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+        } else if (isMounted) {
+            setArError("Camera is not available.");
+            return;
+        }
+
+        // Request compass permissions and add listener
         try {
-            // iOS 13+ requires user gesture to request permission. This might not work if not triggered by a button.
-            // A good practice is to have a "Start AR" button that calls this function.
-             if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+            if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
                 const permission = await (DeviceOrientationEvent as any).requestPermission();
                 if (permission !== 'granted') {
                     throw new Error("Compass permission denied.");
@@ -52,43 +61,62 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
             }
         } catch (e) {
             console.warn("Could not request orientation permission. This may fail on iOS.", e);
-        }
-
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            if (isMounted && videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-        } catch (err) {
-            if (isMounted) setArError("Could not access camera. Please check permissions in your browser settings.");
-            return;
+            if (isMounted) setArError("Compass permission denied.");
         }
 
         const handleOrientation = (event: DeviceOrientationEvent) => {
-            if (event.alpha !== null) {
-                if (isMounted) setHeading(event.alpha);
+            if (event.alpha !== null && isMounted) {
+                setHeading(event.alpha);
             }
         };
 
         window.addEventListener('deviceorientation', handleOrientation);
-
-        return () => {
-            isMounted = false;
-            window.removeEventListener('deviceorientation', handleOrientation);
-            stream?.getTracks().forEach(track => track.stop());
-            if (videoRef.current) {
-                videoRef.current.srcObject = null;
-            }
-        };
+        orientationCleanup = () => window.removeEventListener('deviceorientation', handleOrientation);
     };
 
-    const cleanupPromise = startAR();
-    
+    startARListeners();
+
+    // Cleanup function for the effect
     return () => {
-        cleanupPromise.then(cleanup => cleanup && cleanup());
+        isMounted = false;
+        // Clean up compass listener
+        if (orientationCleanup) {
+            orientationCleanup();
+        }
+        // Stop camera stream tracks
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        // Detach from video element
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
     };
   }, [navState]);
   
+  const handleStartARClick = async () => {
+    setArError(null); // Clear previous errors before trying again
+    try {
+        // Request camera directly on click to ensure it's a user gesture
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        streamRef.current = stream; // Store the stream in the ref
+        setArStep(0);
+        setNavState('NAVIGATING'); // Now switch the view
+    } catch (err) {
+        console.error("Error accessing camera:", err);
+        let message = "Could not access camera. Please check permissions in your browser settings.";
+        if (err instanceof DOMException) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                message = "Camera access was denied. Please allow it and try again.";
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                message = "No back-facing camera found on this device.";
+            }
+        }
+        setArError(message);
+    }
+  };
+
   const handleBack = () => {
     setArStep(0);
     setHeading(null);
@@ -97,6 +125,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
     } else if (navState === 'BLUEPRINT') {
         setNavState('SELECTION');
         setDestination(null);
+        setArError(null); // Clear any errors when going back to selection
     } else {
         onBack();
     }
@@ -213,8 +242,14 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
             </div>
         </main>
         
+        {arError && (
+            <div className="my-2 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg text-sm text-center">
+                {arError}
+            </div>
+        )}
+
         <footer className='mt-4'>
-            <button onClick={() => { setArStep(0); setNavState('NAVIGATING'); }} className="w-full py-4 bg-slate-700 text-white text-xl font-bold rounded-lg shadow-lg hover:bg-slate-600 transition-colors">
+            <button onClick={handleStartARClick} className="w-full py-4 bg-slate-700 text-white text-xl font-bold rounded-lg shadow-lg hover:bg-slate-600 transition-colors">
                 Start AR Navigation
             </button>
         </footer>
