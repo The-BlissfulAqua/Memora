@@ -11,12 +11,38 @@ interface AppState {
 }
 
 const initialState: AppState = {
-  reminders: [],
+  reminders: [
+    { id: '1', title: 'Take Morning Pills', time: '08:00 AM', completed: false, icon: 'medication' },
+    { id: '2', title: 'Eat Breakfast', time: '08:30 AM', completed: false, icon: 'meal' },
+    { id: '3', title: 'Drink a glass of water', time: '10:00 AM', completed: false, icon: 'hydration' },
+  ],
   alerts: [],
-  memories: [],
-  eventLog: [],
-  sharedQuote: null,
-  voiceMessages: [],
+  memories: [
+    {
+      id: 'mem1',
+      imageUrl: 'https://images.unsplash.com/photo-1558032761-e50cf35451a9?q=80&w=2070&auto=format&fit=crop',
+      caption: 'That wonderful day we spent at the beach with the grandkids. Remember how much they loved the ice cream?',
+      sharedBy: 'Your Daughter, Jane'
+    }
+  ],
+  eventLog: [
+    { id: 'ev1', text: 'Caregiver scheduled "Take Morning Pills".', timestamp: new Date().toLocaleString(), icon: 'task' }
+  ],
+  sharedQuote: {
+    id: 'q1',
+    text: 'Just a little note to say we are thinking of you today!',
+    timestamp: new Date().toLocaleString()
+  },
+  voiceMessages: [
+      { 
+          id: 'vm1', 
+          audioUrl: 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAsYVVYA', // Placeholder for a real audio file
+          duration: 5,
+          senderRole: SenderRole.FAMILY, 
+          senderName: 'Your Grandson, Leo',
+          timestamp: '10:30 AM'
+      },
+  ],
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {

@@ -9,14 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.17.0",
-    "react-dom": "^19.1.1",
-    "react": "^19.1.1",
     "vite": "^7.1.4",
     "@vitejs/plugin-react": "^5.0.2",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
-    "https": "^1.0.0"
+    "https": "^1.0.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "@google/genai": "^1.17.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
