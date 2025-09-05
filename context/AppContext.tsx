@@ -11,25 +11,12 @@ interface AppState {
 }
 
 const initialState: AppState = {
-  reminders: [
-    { id: '1', title: 'Take Morning Pills', time: '8:00 AM', completed: false, icon: 'medication' },
-    { id: '2', title: 'Eat Breakfast', time: '8:30 AM', completed: false, icon: 'meal' },
-    { id: '3', title: 'Drink a glass of water', time: '10:00 AM', completed: false, icon: 'hydration' },
-    { id: '4', title: 'Take Afternoon Pills', time: '1:00 PM', completed: false, icon: 'medication' },
-  ],
+  reminders: [],
   alerts: [],
-  memories: [
-      { id: 'mem-1', imageUrl: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?q=80&w=2835&auto=format&fit=crop', caption: 'Remember our lovely dog, Paws?', sharedBy: 'Your Daughter, Jane' },
-      { id: 'mem-2', imageUrl: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?q=80&w=2940&auto=format&fit=crop', caption: 'Our favorite beach vacation.', sharedBy: 'Your Son, Mike' }
-  ],
-  eventLog: [
-      { id: 'evt-1', text: 'Caregiver scheduled "Take Morning Pills"', timestamp: new Date(Date.now() - 3600000).toLocaleTimeString(), icon: 'task' }
-  ],
-  sharedQuote: { id: 'quote-1', text: 'A kind heart is a fountain of gladness, making everything in its vicinity freshen into smiles.', timestamp: new Date().toLocaleTimeString() },
-  voiceMessages: [
-    { id: 'vm-1', audioUrl: 'https://www.w3schools.com/html/horse.mp3', duration: 2, senderRole: SenderRole.FAMILY, senderName: 'Your Daughter, Jane', timestamp: 'Yesterday' },
-    { id: 'vm-2', audioUrl: 'https://www.w3schools.com/html/horse.mp3', duration: 2, senderRole: SenderRole.CAREGIVER, senderName: 'Caregiver', timestamp: 'This morning' },
-  ]
+  memories: [],
+  eventLog: [],
+  sharedQuote: null,
+  voiceMessages: [],
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {

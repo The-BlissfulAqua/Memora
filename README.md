@@ -46,7 +46,7 @@ A portal for family members to stay connected and involved in their loved one's 
 
 ## 🚀 Getting Started
 
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
+Follow these instructions to get a copy of the project up and running on your local machine.
 
 ### Prerequisites
 
@@ -57,14 +57,12 @@ Follow these instructions to get a copy of the project up and running on your lo
 ### Installation & Setup
 
 1.  **Clone the repository:**
-    Your plan is correct! First, you'll need to create a repository on GitHub, upload the files, and then clone it.
     ```bash
     git clone https://github.com/your-username/memora-app.git
     cd memora-app
     ```
 
 2.  **Install dependencies:**
-    This project uses a standard Node.js setup. Run this command to install all the necessary libraries.
     ```bash
     npm install
     ```
@@ -76,47 +74,47 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
     *This is a crucial step. The AI features will not work without it.*
 
-4.  **Set up a trusted local HTTPS certificate (One-time setup):**
-    Vite's default certificate can cause SSL errors on mobile devices. Using a tool called `mkcert` creates a certificate that your devices will trust.
-    
-    a. **Install `mkcert`**. Follow the instructions for your operating system on the [official mkcert repository](https://github.com/FiloSottile/mkcert). On macOS with Homebrew, for example, you would run `brew install mkcert`.
+## 🏃 Running the Development Server
 
-    b. **Install the local certificate authority**. In your terminal, run:
+### For Desktop Development
+
+You can start the server immediately for development on your computer.
+
+1.  **Start the server:**
+    ```bash
+    npm run dev
+    ```
+2.  **Open in your browser:**
+    Navigate to the local HTTPS URL provided (e.g., `https://localhost:5173`). Your browser will show a security warning because the SSL certificate is self-signed. You can safely click "Advanced" and proceed to the site.
+
+### For Mobile Device Testing (Recommended)
+
+To test features like the camera, AR navigation, and fall detection, you **must** run the app on a physical mobile device using a trusted SSL certificate.
+
+This is a **one-time setup** that creates a trusted certificate on your machine.
+
+1.  **Install `mkcert`:**
+    Follow the official instructions for your operating system on the [mkcert repository](https://github.com/FiloSottile/mkcert). On macOS with Homebrew, for example, run: `brew install mkcert`.
+
+2.  **Create a local Certificate Authority:**
+    In your terminal, run the following command. You may be prompted for your password.
     ```bash
     mkcert -install
     ```
-    You might be prompted for your system password. This makes the certificates you create trusted on your machine.
 
-    c. **Generate the certificate files**. In the root directory of this project, run:
+3.  **Generate Certificate Files:**
+    In the root directory of this project, run:
     ```bash
     mkcert localhost
     ```
-    This will create two files: `localhost.pem` and `localhost-key.pem`. The project is now configured to use them automatically.
+    This creates two files: `localhost.pem` and `localhost-key.pem`. The dev server will automatically detect and use them.
 
-### Running the Development Server
-
-1.  **Start the server:**
-    This command will start the Vite development server, which compiles the code and makes it available in your browser.
-    ```bash
-    npm run dev
-    ```
-
-2.  **Open in your browser:**
-    The application will be running at a local HTTPS address like `https://localhost:5173`.
-
-### Testing on a Mobile Device
-
-To test features like the camera, AR navigation, and fall detection, you must run the app on a physical mobile device.
-
-1.  Ensure your computer and your mobile phone are connected to the **same Wi-Fi network**.
-
-2.  Start the development server. The project is now configured to automatically enable a secure connection (required for camera/sensor access) and make the server visible on your local network.
-    ```bash
-    npm run dev
-    ```
-
-3.  The terminal will output a "Network" URL, which will look something like `https://192.168.1.10:5173`.
-
-4.  Open the browser on your phone and navigate to that URL. Since you used `mkcert`, you should not see any privacy warnings.
-
-5.  Grant the necessary permissions for the camera and motion sensors when prompted by the browser.
+4.  **Run the Server & Connect:**
+    a. Make sure your computer and mobile phone are on the **same Wi-Fi network**.
+    b. Start the dev server:
+       ```bash
+       npm run dev
+       ```
+    c. The terminal will output a "Network" URL (e.g., `https://192.168.1.10:5173`).
+    d. Open your phone's browser and go to that Network URL. The page should load securely without any warnings.
+    e. Grant camera and motion sensor permissions when prompted.
