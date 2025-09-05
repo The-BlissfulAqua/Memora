@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { getAICompanionChatResponse } from '../../services/geminiService';
+import { getAICompanionChatResponse, isGeminiConfigured, missingApiKeyError } from '../../services/geminiService';
 import { useAppContext } from '../../context/AppContext';
 import MicrophoneIcon from '../icons/MicrophoneIcon';
 
@@ -26,8 +26,8 @@ interface Message {
 
 const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
   const { dispatch } = useAppContext();
-  const [messages, setMessages] = useState<Message[]>([
-    { sender: 'ai', text: "Hello! I'm Digi, your friendly companion. How are you feeling today?" }
+  const [messages, setMessages] = useState<Message[]>(() => [
+    { sender: 'ai', text: isGeminiConfigured ? "Hello! I'm Digi, your friendly companion. How are you feeling today?" : missingApiKeyError }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -173,7 +173,9 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
             <div className="text-2xl mr-3">❤️</div>
             <div>
                 <h2 className="text-xl font-bold text-white">Your Companion, Digi</h2>
-                <p className="text-sm text-green-400 font-semibold">Online</p>
+                <p className={`text-sm font-semibold ${isGeminiConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {isGeminiConfigured ? 'Online' : 'Limited'}
+                </p>
             </div>
         </div>
         <div className="flex items-center gap-4">
@@ -225,18 +227,18 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSend()}
           placeholder={isListening ? 'Listening...' : "Type a message..."}
-          className="flex-grow px-4 py-3 bg-slate-800/70 border border-slate-700 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 transition-colors"
-          disabled={isLoading || isListening}
+          className="flex-grow px-4 py-3 bg-slate-800/70 border border-slate-700 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 transition-colors disabled:bg-slate-800/40 disabled:cursor-not-allowed"
+          disabled={isLoading || isListening || !isGeminiConfigured}
         />
         {recognitionRef.current && (
             <button
               onClick={handleListen}
-              disabled={isLoading}
+              disabled={isLoading || !isGeminiConfigured}
               className={`flex-shrink-0 w-12 h-12 rounded-full transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                   isListening 
                   ? 'bg-red-600 text-white animate-pulse focus:ring-red-500' 
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600 focus:ring-slate-500'
-              }`}
+              } disabled:bg-slate-800/40 disabled:cursor-not-allowed`}
               aria-label={isListening ? 'Stop listening' : 'Start listening'}
             >
               <MicrophoneIcon className="w-6 h-6" />
@@ -244,8 +246,8 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
         )}
         <button
           onClick={handleSend}
-          disabled={isLoading || input.trim() === ''}
-          className="flex-shrink-0 w-12 h-12 bg-slate-700 text-white font-bold rounded-full disabled:bg-slate-800 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors flex items-center justify-center"
+          disabled={isLoading || input.trim() === '' || !isGeminiConfigured}
+          className="flex-shrink-0 w-12 h-12 bg-slate-700 text-white font-bold rounded-full disabled:bg-slate-800/40 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors flex items-center justify-center"
           aria-label="Send message"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>

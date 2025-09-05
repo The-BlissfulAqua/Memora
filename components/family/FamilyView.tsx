@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { getAIComfortingQuote } from '../../services/geminiService';
+import { getAIComfortingQuote, isGeminiConfigured, missingApiKeyError } from '../../services/geminiService';
 import { Memory, SharedQuote, Alert, EventLogItem, VoiceMessage, SenderRole } from '../../types';
 import PillIcon from '../icons/PillIcon';
 import ForkKnifeIcon from '../icons/ForkKnifeIcon';
@@ -49,9 +49,17 @@ const FamilyView: React.FC = () => {
     };
     
     const handleSendQuote = async () => {
+        if (!isGeminiConfigured) {
+            alert(missingApiKeyError);
+            return;
+        }
         setIsSendingQuote(true);
         try {
             const quoteText = await getAIComfortingQuote();
+            if (quoteText === missingApiKeyError) {
+                alert(quoteText);
+                return;
+            }
             const newQuote: SharedQuote = {
                 id: new Date().toISOString(),
                 text: quoteText,
@@ -164,7 +172,12 @@ const FamilyView: React.FC = () => {
       <div className="p-4 bg-slate-800/40 rounded-xl shadow-md border border-slate-700/50">
         <h2 className="text-xl font-bold text-gray-300 mb-3">Send a Comforting Thought</h2>
         <p className='text-sm text-slate-400 mb-3'>Send a short, positive message to your loved one's home screen. Powered by AI.</p>
-        <button onClick={handleSendQuote} disabled={isSendingQuote} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm disabled:opacity-50 disabled:cursor-wait">
+        <button 
+          onClick={handleSendQuote} 
+          disabled={isSendingQuote || !isGeminiConfigured} 
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!isGeminiConfigured ? 'API Key not configured. See README.md' : 'Send an AI-generated thought'}
+        >
             {isSendingQuote ? 'Sending...' : <> <CompanionIcon className="w-5 h-5"/> Send Thought </>}
         </button>
       </div>
