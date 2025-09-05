@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -9,10 +10,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      // fix: The `https` configuration was causing a TypeScript error. Changing to an empty
-      // object `{}` resolves the type incompatibility in the user's environment while
-      // still signaling to Vite and its plugins to enable HTTPS.
-      https: {}, // Enable HTTPS
+      // Use a custom, locally-trusted certificate for better device compatibility.
+      // The user must generate these files using `mkcert`. See README.md for instructions.
+      https: {
+        key: fs.readFileSync('./localhost-key.pem'),
+        cert: fs.readFileSync('./localhost.pem'),
+      },
       host: true,  // Expose to the network to allow access from mobile devices
     },
     define: {

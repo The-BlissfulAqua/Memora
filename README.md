@@ -76,6 +76,23 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
     *This is a crucial step. The AI features will not work without it.*
 
+4.  **Set up a trusted local HTTPS certificate (One-time setup):**
+    Vite's default certificate can cause SSL errors on mobile devices. Using a tool called `mkcert` creates a certificate that your devices will trust.
+    
+    a. **Install `mkcert`**. Follow the instructions for your operating system on the [official mkcert repository](https://github.com/FiloSottile/mkcert). On macOS with Homebrew, for example, you would run `brew install mkcert`.
+
+    b. **Install the local certificate authority**. In your terminal, run:
+    ```bash
+    mkcert -install
+    ```
+    You might be prompted for your system password. This makes the certificates you create trusted on your machine.
+
+    c. **Generate the certificate files**. In the root directory of this project, run:
+    ```bash
+    mkcert localhost
+    ```
+    This will create two files: `localhost.pem` and `localhost-key.pem`. The project is now configured to use them automatically.
+
 ### Running the Development Server
 
 1.  **Start the server:**
@@ -85,7 +102,7 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
 
 2.  **Open in your browser:**
-    The application will be running at a local HTTPS address like `https://localhost:5173`. You may need to accept a security warning in your browser for the self-signed certificate.
+    The application will be running at a local HTTPS address like `https://localhost:5173`.
 
 ### Testing on a Mobile Device
 
@@ -100,6 +117,6 @@ To test features like the camera, AR navigation, and fall detection, you must ru
 
 3.  The terminal will output a "Network" URL, which will look something like `https://192.168.1.10:5173`.
 
-4.  Open the browser on your phone and navigate to that URL. You may see a privacy warning because the security certificate is self-signed; you can safely proceed.
+4.  Open the browser on your phone and navigate to that URL. Since you used `mkcert`, you should not see any privacy warnings.
 
 5.  Grant the necessary permissions for the camera and motion sensors when prompted by the browser.
