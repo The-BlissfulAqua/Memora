@@ -118,3 +118,65 @@ This is a **one-time setup** that creates a trusted certificate on your machine.
     c. The terminal will output a "Network" URL (e.g., `https://192.168.1.10:5173`).
     d. Open your phone's browser and go to that Network URL. The page should load securely without any warnings.
     e. Grant camera and motion sensor permissions when prompted.
+
+## 📱 Building for Android with Capacitor (APK)
+
+Follow these steps to package the web app into a native Android APK file that you can install directly on a device.
+
+### Prerequisites
+
+-   [Android Studio](https://developer.android.com/studio) installed on your machine.
+
+### 1. Install Capacitor Dependencies
+
+In your project's root directory, run the following commands to add Capacitor's command-line tool (CLI), core library, and the Android platform library.
+
+```bash
+npm install @capacitor/cli @capacitor/core @capacitor/android
+```
+
+### 2. Add the Android Platform
+
+Capacitor will now generate a complete native Android project inside your project.
+
+```bash
+npx cap add android
+```
+
+This creates a new `android` folder in your project. This is a real Android project that you can open in Android Studio.
+
+### 3. Build Your Web App
+
+Create a production-ready build of your React app. This command bundles all your code into a `dist` folder, which is what the native app will use.
+
+```bash
+npm run build
+```
+
+### 4. Sync Your Web Build with Android
+
+This command copies your web files from the `dist` folder into the native Android project. You should run this command every time you make changes to your web code and want to update the native app.
+
+```bash
+npx cap sync android
+```
+Capacitor will also try to automatically configure permissions in the Android project based on the Web APIs you use (like camera and microphone).
+
+### 5. Open the Project in Android Studio
+
+Now, you can open your native Android project.
+
+```bash
+npx cap open android
+```
+
+This will launch Android Studio and load your project.
+
+### 6. Build the APK in Android Studio
+
+Once the project is open and has finished its initial sync/build (this can take a few minutes the first time), you can create the APK.
+
+1.  In the Android Studio top menu, go to **Build** -> **Build Bundle(s) / APK(s)** -> **Build APK(s)**.
+2.  Android Studio will start building. Once it's finished, a small notification will pop up in the bottom-right corner.
+3.  Click the **"locate"** link in the notification to open the folder containing your brand new APK file. It's usually found in `android/app/build/outputs/apk/debug/app-debug.apk`.
+4.  You can now transfer this `app-debug.apk` file to your Android phone and install it.

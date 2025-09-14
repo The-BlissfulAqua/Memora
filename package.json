@@ -1,5 +1,5 @@
 {
-  "name": "[rj]-copy-of-copy-of-memora:-ai-dementia-companion",
+  "name": "v2_memora:-ai-dementia-companion",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -16,7 +16,8 @@
     "@vitejs/plugin-react": "^5.0.2",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
-    "https": "^1.0.0"
+    "https": "^1.0.0",
+    "@capacitor/cli": "^7.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
