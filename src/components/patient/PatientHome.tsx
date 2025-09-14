@@ -7,6 +7,7 @@ import CompanionIcon from '../icons/CompanionIcon';
 import BrainIcon from '../icons/BrainIcon';
 import ImageIcon from '../icons/ImageIcon';
 import VoicemailIcon from '../icons/VoicemailIcon';
+import FaceScanIcon from '../icons/FaceScanIcon';
 
 interface PatientHomeProps {
   setScreen: (screen: PatientScreen) => void;
@@ -44,6 +45,7 @@ const PatientHome: React.FC<PatientHomeProps> = ({ setScreen }) => {
     { name: 'Navigate Home', icon: <NavigationIcon className="w-8 h-8"/>, screen: PatientScreen.NAVIGATION },
     { name: 'My Reminders', icon: <RemindersIcon className="w-8 h-8"/>, screen: PatientScreen.REMINDERS },
     { name: 'AI Companion', icon: <CompanionIcon className="w-8 h-8"/>, screen: PatientScreen.AI_COMPANION },
+    { name: 'Who Is This?', icon: <FaceScanIcon className="w-8 h-8"/>, screen: PatientScreen.WHO_IS_THIS },
     { name: 'Voice Messages', icon: <VoicemailIcon className="w-8 h-8"/>, screen: PatientScreen.VOICE_MESSAGES },
     { name: 'Memory Game', icon: <BrainIcon className="w-8 h-8"/>, screen: PatientScreen.COGNITIVE_GAMES },
     { name: 'Memory Album', icon: <ImageIcon className="w-8 h-8"/>, screen: PatientScreen.MEMORY_ALBUM },
