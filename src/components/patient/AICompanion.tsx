@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getAICompanionChatResponse, isGeminiConfigured, missingApiKeyError } from '../../services/geminiService';
-import { useAppContext } from '../../context/AppContext';
 import MicrophoneIcon from '../icons/MicrophoneIcon';
 
 
@@ -12,9 +11,6 @@ declare global {
   }
 }
 
-// Reference to the global faceapi object from the script tag
-declare const faceapi: any;
-
 interface AICompanionProps {
   onBack: () => void;
 }
@@ -25,7 +21,6 @@ interface Message {
 }
 
 const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
-  const { dispatch } = useAppContext();
   const [messages, setMessages] = useState<Message[]>(() => [
     { sender: 'ai', text: isGeminiConfigured ? "Hello! I'm Digi, your friendly companion. How are you feeling today?" : missingApiKeyError }
   ]);
@@ -35,13 +30,6 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
   const [sendTranscriptOnEnd, setSendTranscriptOnEnd] = useState(false);
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Emotion Detection State
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [lastDetectedEmotion, setLastDetectedEmotion] = useState('');
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const detectionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -75,40 +63,8 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
     }
   }, [sendTranscriptOnEnd, input, handleSend]);
 
-  // Load face-api models, set up camera, and speech recognition
+  // Set up speech recognition
   useEffect(() => {
-    const loadModels = async () => {
-      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
-        ]);
-        setModelsLoaded(true);
-      } catch (error) { console.error("Failed to load face-api models", error); }
-    };
-    if (typeof faceapi !== 'undefined') loadModels();
-    
-    const startVideo = () => {
-        navigator.mediaDevices.getUserMedia({ video: {} })
-            .then(stream => { 
-              if (videoRef.current) videoRef.current.srcObject = stream;
-              setCameraError(null);
-            })
-            .catch(err => {
-                console.error("Error starting video stream:", err);
-                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    setCameraError("Camera access denied. Emotion detection is disabled. Please allow access in browser settings.");
-                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                     setCameraError("No camera found on this device. Emotion detection is unavailable.");
-                } else {
-                    setCameraError("Could not start camera. Emotion detection is unavailable.");
-                }
-            });
-    };
-    startVideo();
-
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognitionAPI) {
         const recognition = new SpeechRecognitionAPI();
@@ -126,32 +82,11 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
     }
 
     return () => {
-        if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
-        if (videoRef.current && videoRef.current.srcObject) {
-            (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
         }
-        if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
-
-  // Start emotion detection when models and video are ready
-  useEffect(() => {
-    if (modelsLoaded && videoRef.current) {
-        detectionIntervalRef.current = setInterval(async () => {
-            if (videoRef.current && !videoRef.current.paused) {
-                const detections = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-                if (detections && detections.expressions) {
-                    const expressions = detections.expressions;
-                    const dominantEmotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
-                    if (dominantEmotion !== lastDetectedEmotion) {
-                        setLastDetectedEmotion(dominantEmotion);
-                        dispatch({ type: 'LOG_EMOTION', payload: { emotion: dominantEmotion } });
-                    }
-                }
-            }
-        }, 5000); // Detect every 5 seconds
-    }
-  }, [modelsLoaded, dispatch, lastDetectedEmotion]);
 
   const handleListen = () => {
       if (!recognitionRef.current) return alert("Sorry, your browser doesn't support voice recognition.");
@@ -161,7 +96,6 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
 
   return (
     <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
-       <video ref={videoRef} autoPlay muted playsInline style={{ display: 'none' }} width="320" height="240"></video>
        <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-slate-700"></div>
        <div className="absolute bottom-3 right-3 w-2 h-2 rounded-full bg-slate-700"></div>
       
@@ -177,18 +111,6 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
                     {isGeminiConfigured ? 'Online' : 'Limited'}
                 </p>
             </div>
-        </div>
-        <div className="flex items-center gap-4">
-             {cameraError ? (
-                <div className="text-right text-xs text-yellow-400 max-w-xs">{cameraError}</div>
-             ) : (
-                lastDetectedEmotion && (
-                    <div className="text-right text-xs">
-                        <p className="text-slate-400">Feeling:</p>
-                        <p className="font-semibold text-white capitalize">{lastDetectedEmotion}</p>
-                    </div>
-                )
-             )}
         </div>
       </header>
       

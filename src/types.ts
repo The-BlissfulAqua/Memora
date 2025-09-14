@@ -61,8 +61,8 @@ export enum PatientScreen {
     AI_COMPANION = 'AI_COMPANION',
     COGNITIVE_GAMES = 'COGNITIVE_GAMES',
     MEMORY_ALBUM = 'MEMORY_ALBUM',
-    WHO_IS_THIS = 'WHO_IS_THIS',
     VOICE_MESSAGES = 'VOICE_MESSAGES',
+    WHO_IS_THIS = 'WHO_IS_THIS',
 }
 
 export type AppAction =

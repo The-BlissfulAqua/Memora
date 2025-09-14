@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { getAIComfortingQuote, isGeminiConfigured, missingApiKeyError } from '../../services/geminiService';
 import { Memory, SharedQuote, Alert, EventLogItem, VoiceMessage, SenderRole } from '../../types';
@@ -12,6 +12,25 @@ import ImageIcon from '../icons/ImageIcon';
 import VoiceMessagePlayer from '../shared/VoiceMessagePlayer';
 import VoiceRecorder from '../shared/VoiceRecorder';
 
+// Helper function to play a sound using Web Audio API
+const playAlertSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
+    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+
+    oscillator.start(audioContext.currentTime);
+    // Beep for 0.5s, pause 0.5s, then beep again for 4s total duration = 5s
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+    oscillator.stop(audioContext.currentTime + 5);
+};
+
 const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; className?: string }> = ({ icon, className }) => {
     switch (icon) {
         case 'medication': return <PillIcon className={className} />;
@@ -24,11 +43,22 @@ const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; classN
 const FamilyView: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const { reminders, alerts, eventLog, voiceMessages } = state;
+    const previousAlertsCount = useRef(alerts.length);
 
     const [imageUrl, setImageUrl] = useState('');
     const [caption, setCaption] = useState('');
     const [sharedBy, setSharedBy] = useState('');
     const [isSendingQuote, setIsSendingQuote] = useState(false);
+
+    useEffect(() => {
+        if (alerts.length > previousAlertsCount.current) {
+            const newAlert = alerts[0]; // The newest alert is always at the beginning
+            if (newAlert.type === 'SOS' || newAlert.type === 'FALL') {
+                playAlertSound();
+            }
+        }
+        previousAlertsCount.current = alerts.length;
+    }, [alerts]);
 
     const handleAddMemory = (e: React.FormEvent) => {
         e.preventDefault();

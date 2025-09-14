@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
+import { Camera } from '@capacitor/camera';
 
 // Reference to the global faceapi object from the script tag
 declare const faceapi: any;
@@ -15,6 +16,7 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [loadingMessage, setLoadingMessage] = useState('Loading AI models...');
     const [isReady, setIsReady] = useState(false);
+    const intervalRef = useRef<number | null>(null);
 
     useEffect(() => {
         const loadFaceApi = async () => {
@@ -34,22 +36,30 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
             startVideo();
         };
 
-        const startVideo = () => {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-                .then(stream => {
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                })
-                .catch(err => {
-                    console.error("Error starting video stream:", err);
-                    setLoadingMessage('Could not access camera.');
-                });
+        const startVideo = async () => {
+            try {
+                const permissionStatus = await Camera.requestPermissions();
+                 if (permissionStatus.camera !== 'granted') {
+                    setLoadingMessage("Camera access denied. Please allow it in settings to use this feature.");
+                    return;
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                 if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                 console.error("Error starting video stream:", err);
+                 setLoadingMessage('Could not access camera.');
+            }
         };
 
         loadFaceApi();
 
         return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
             if (videoRef.current && videoRef.current.srcObject) {
                 const stream = videoRef.current.srcObject as MediaStream;
                 stream.getTracks().forEach(track => track.stop());
@@ -70,7 +80,6 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
             memories.map(async (memory) => {
                 const descriptions = [];
                 try {
-                    // Using a more robust CORS proxy for unsplash images.
                     const img = await faceapi.fetchImage(`https://corsproxy.io/?${encodeURIComponent(memory.imageUrl)}`);
                     const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
                     if (detections) {
@@ -95,7 +104,7 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
         setLoadingMessage('Ready to recognize!');
         setIsReady(true);
         
-        const intervalId = setInterval(async () => {
+        intervalRef.current = window.setInterval(async () => {
             if (canvasRef.current && videoRef.current && !videoRef.current.paused) {
                 const canvas = canvasRef.current;
                 const video = videoRef.current;
@@ -127,22 +136,17 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
                 }
             }
         }, 500);
-
-        // This is a more robust way to clear interval on component unmount in useEffect
-        return () => clearInterval(intervalId);
     };
 
-    // This effect runs the handleVideoPlay function once the video element is ready.
     useEffect(() => {
         const video = videoRef.current;
         if (video) {
             video.addEventListener('play', handleVideoPlay);
-            const cleanup = () => {
+            return () => {
               video.removeEventListener('play', handleVideoPlay)
             }
-            return cleanup
         }
-    }, [memories]); // Rerun if memories change
+    }, [memories]);
 
     return (
         <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Camera } from '@capacitor/camera';
 
 interface ARNavigationProps {
   onBack: () => void;
@@ -98,6 +99,13 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const handleStartARClick = async () => {
     setArError(null); // Clear previous errors before trying again
     try {
+        // Request camera permissions using Capacitor for native app reliability
+        const permissionStatus = await Camera.requestPermissions();
+        if (permissionStatus.camera !== 'granted') {
+            setArError("Camera access was denied. Please allow it in settings and try again.");
+            return;
+        }
+
         // Request camera directly on click to ensure it's a user gesture
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         streamRef.current = stream; // Store the stream in the ref
@@ -105,7 +113,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         setNavState('NAVIGATING'); // Now switch the view
     } catch (err) {
         console.error("Error accessing camera:", err);
-        let message = "Could not access camera. Please check permissions in your browser settings.";
+        let message = "Could not access camera. Please check permissions in your settings.";
         if (err instanceof DOMException) {
             if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
                 message = "Camera access was denied. Please allow it and try again.";

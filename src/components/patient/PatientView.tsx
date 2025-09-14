@@ -9,6 +9,7 @@ import VoiceMessages from './VoiceMessages';
 import WhoIsThis from './WhoIsThis';
 import { PatientScreen } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import { Motion } from '@capacitor/motion';
 
 const PatientView: React.FC = () => {
   const { dispatch } = useAppContext();
@@ -17,37 +18,45 @@ const PatientView: React.FC = () => {
   // Fall Detection Logic
   useEffect(() => {
     const FALL_THRESHOLD = 25; // m/s^2, a threshold for fall detection
-    let lastReadingTime = Date.now();
+    
+    const startFallDetection = async () => {
+        try {
+            // Check and request permissions for motion sensors on native devices
+            const permissions = await Motion.requestPermissions();
+            if (permissions.motion !== 'granted') {
+                console.warn('Motion permission not granted. Fall detection disabled.');
+                return;
+            }
 
-    const handleMotionEvent = (event: DeviceMotionEvent) => {
-      if (Date.now() - lastReadingTime < 100) return; // Throttle readings
-      lastReadingTime = Date.now();
+            await Motion.addListener('accel', (event) => {
+                const { x, y, z } = event.acceleration;
+                const magnitude = Math.sqrt(x * x + y * y + z * z);
+                
+                if (magnitude > FALL_THRESHOLD) {
+                    console.log('Potential fall detected! Magnitude:', magnitude);
+                    dispatch({
+                        type: 'TRIGGER_SOS',
+                        payload: {
+                            id: new Date().toISOString(),
+                            message: 'Potential Fall Detected!',
+                            timestamp: new Date().toLocaleString(),
+                            type: 'FALL',
+                        },
+                    });
+                    // To prevent multiple alerts, a cooldown could be added here in a real app.
+                }
+            });
 
-      const acc = event.accelerationIncludingGravity;
-      if (acc && acc.x != null && acc.y != null && acc.z != null) {
-        const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-        if (magnitude > FALL_THRESHOLD) {
-          console.log('Potential fall detected! Magnitude:', magnitude);
-          dispatch({
-            type: 'TRIGGER_SOS',
-            payload: {
-              id: new Date().toISOString(),
-              message: 'Potential Fall Detected!',
-              timestamp: new Date().toLocaleString(),
-              type: 'FALL',
-            },
-          });
-          // To prevent multiple alerts, a cooldown could be added here in a real app.
+        } catch (e) {
+            console.error('Error setting up fall detection:', e);
         }
-      }
     };
-
-    // Note: In a production app, iOS 13+ requires explicit user permission for motion events,
-    // usually triggered by a button click. For this demo, we assume permission is granted.
-    window.addEventListener('devicemotion', handleMotionEvent);
+    
+    startFallDetection();
 
     return () => {
-      window.removeEventListener('devicemotion', handleMotionEvent);
+      // Clean up listeners when the component unmounts
+      Motion.removeAllListeners();
     };
   }, [dispatch]);
 

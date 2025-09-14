@@ -8,6 +8,7 @@ import BrainIcon from '../icons/BrainIcon';
 import ImageIcon from '../icons/ImageIcon';
 import VoicemailIcon from '../icons/VoicemailIcon';
 import FaceScanIcon from '../icons/FaceScanIcon';
+import SOSSlider from './SOSSlider';
 
 interface PatientHomeProps {
   setScreen: (screen: PatientScreen) => void;
@@ -38,6 +39,7 @@ const PatientHome: React.FC<PatientHomeProps> = ({ setScreen }) => {
       type: 'SOS' as const,
     };
     dispatch({ type: 'TRIGGER_SOS', payload: newAlert });
+    // This alert is temporary for immediate feedback; the caregiver dashboard is the primary notification point.
     alert('Caregiver and Family have been notified!');
   };
 
@@ -69,7 +71,7 @@ const PatientHome: React.FC<PatientHomeProps> = ({ setScreen }) => {
         </div>
       )}
 
-      <main className="flex-grow flex flex-col space-y-3">
+      <main className="flex-grow flex flex-col space-y-3 overflow-y-auto pr-2 pb-24"> {/* Added padding-bottom for SOS slider */}
         {menuItems.map((item) => (
           <MenuItem 
             key={item.name}
@@ -80,17 +82,7 @@ const PatientHome: React.FC<PatientHomeProps> = ({ setScreen }) => {
         ))}
       </main>
 
-      <footer className="mt-6">
-        <button
-          onClick={handleSOS}
-          className="w-full py-4 bg-red-800/50 border border-red-600/80 text-red-200 text-2xl font-bold rounded-lg shadow-lg flex items-center justify-center gap-4 hover:bg-red-800/80 hover:text-white transition-all duration-300"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          EMERGENCY SOS
-        </button>
-      </footer>
+      <SOSSlider onActivate={handleSOS} />
     </div>
   );
 };
