@@ -86,7 +86,6 @@ const AICompanion: React.FC<AICompanionProps> = ({ onBack }) => {
     };
   }, []);
 
-
   const handleListen = () => {
       if (!recognitionRef.current) return alert("Sorry, your browser doesn't support voice recognition.");
       if (isListening) recognitionRef.current.stop();

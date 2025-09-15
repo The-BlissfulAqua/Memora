@@ -6,7 +6,6 @@ import ForkKnifeIcon from '../icons/ForkKnifeIcon';
 import GlassWaterIcon from '../icons/GlassWaterIcon';
 import ReminderForm from './ReminderForm';
 import FallIcon from '../icons/FallIcon';
-import CompanionIcon from '../icons/CompanionIcon';
 import VoiceMessagePlayer from '../shared/VoiceMessagePlayer';
 import VoiceRecorder from '../shared/VoiceRecorder';
 

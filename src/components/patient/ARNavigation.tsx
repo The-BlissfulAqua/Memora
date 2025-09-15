@@ -34,36 +34,32 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const stepPhase = useRef<'UP' | 'DOWN'>('DOWN');
   const lastStepTimestamp = useRef(0);
 
-
-  // Effect for setting up and tearing down AR features (camera, compass, motion)
+  // Effect for setting up AND tearing down AR features (camera, compass, motion)
   useEffect(() => {
     if (navState !== 'NAVIGATING') {
-      return;
+      return; // Do nothing if we're not in the navigating state.
     }
 
-    let isMounted = true;
+    let isCancelled = false; // Flag to prevent setup if component unmounts quickly
 
     // Compass Listener
     const handleOrientation = (event: DeviceOrientationEvent) => {
-        if (event.alpha !== null && isMounted) {
+        if (event.alpha !== null && !isCancelled) {
             setHeading(event.alpha);
         }
     };
-    window.addEventListener('deviceorientation', handleOrientation);
     
     // Reliable Step Detection Listener
     const handleMotion = (event: DeviceMotionEvent) => {
-        if (!event.acceleration || !isMounted) return;
+        if (!event.acceleration || isCancelled) return;
 
         const now = Date.now();
-        // Cooldown of 400ms to prevent detecting a single step multiple times
-        if (now - lastStepTimestamp.current < 400) return;
+        if (now - lastStepTimestamp.current < 400) return; // Cooldown
 
         const z = event.acceleration.z ?? 0;
-        const HIGH_THRESHOLD = 11.5; // m/s^2 - high point of a step
-        const LOW_THRESHOLD = 8.0;   // m/s^2 - low point of a step
+        const HIGH_THRESHOLD = 11.5;
+        const LOW_THRESHOLD = 8.0;
 
-        // This simple state machine detects the "up then down" pattern of a step
         if (stepPhase.current === 'DOWN' && z > HIGH_THRESHOLD) {
             stepPhase.current = 'UP';
         } else if (stepPhase.current === 'UP' && z < LOW_THRESHOLD) {
@@ -72,58 +68,63 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
             setSteps(prev => (prev > 0 ? prev - 1 : 0));
         }
     };
-    window.addEventListener('devicemotion', handleMotion);
 
-    // Cleanup function
-    return () => {
-        isMounted = false;
-        window.removeEventListener('deviceorientation', handleOrientation);
-        window.removeEventListener('devicemotion', handleMotion);
-        
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
+    const startAR = async () => {
+      try {
+        setArError(null);
+        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+            const permission = await (DeviceOrientationEvent as any).requestPermission();
+            if (permission !== 'granted') throw new Error("Motion sensor access denied.");
         }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (isCancelled) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
         if (videoRef.current) {
-            videoRef.current.srcObject = null;
+          videoRef.current.srcObject = stream;
         }
+
+        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener('devicemotion', handleMotion);
+
+      } catch (err: any) {
+        console.error("Error starting AR:", err);
+        let message = "Could not start AR. Please check permissions.";
+        if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+          message = "Permission denied. Please allow camera and motion sensor access.";
+        } else if (err.message) {
+          message = err.message;
+        }
+        if(!isCancelled) setArError(message);
+      }
+    };
+
+    startAR();
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('deviceorientation', handleOrientation);
+      window.removeEventListener('devicemotion', handleMotion);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     };
   }, [navState]);
   
-  const handleStartARClick = async () => {
-    setArError(null);
-    try {
-        // Request motion sensor permissions (required on iOS 13+)
-        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-            const permission = await (DeviceOrientationEvent as any).requestPermission();
-            if (permission !== 'granted') {
-                throw new Error("Access to motion sensors was denied.");
-            }
-        }
-
-        // Request camera and start stream
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        streamRef.current = stream;
-        
-        if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-        }
-        
-        setSteps(10); // Reset steps for new journey
-        stepPhase.current = 'DOWN';
-        lastStepTimestamp.current = 0;
-        setNavState('NAVIGATING');
-
-    } catch (err: any) {
-        console.error("Error starting AR:", err);
-        let message = "Could not start AR. Please check permissions in your settings.";
-        if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-            message = "Permission denied. Please allow camera and motion sensor access.";
-        } else if (err.message) {
-            message = err.message;
-        }
-        setArError(message);
-    }
+  const handleStartARClick = () => {
+    // This function now simply triggers the AR effect.
+    setSteps(10);
+    stepPhase.current = 'DOWN';
+    lastStepTimestamp.current = 0;
+    setNavState('NAVIGATING');
   };
 
   const handleBack = () => {
@@ -171,7 +172,6 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }
 
   if (navState === 'BLUEPRINT') {
-    // The blueprint view remains the same.
     const endPoint = destination ? roomLayout[destination] : startPoint;
     const angleRad = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
     const angleDeg = -90 - (angleRad * 180 / Math.PI);
@@ -230,18 +230,17 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
       const targetHeading = destination ? roomLayout[destination].heading : 0;
       let angleDiff = targetHeading - heading;
       
-      // Normalize angle difference to be between -180 and 180 for the shortest turn
       if (angleDiff > 180) angleDiff -= 360;
       if (angleDiff < -180) angleDiff += 360;
 
-      const DIRECTION_THRESHOLD = 20; // 20 degrees of leeway
+      const DIRECTION_THRESHOLD = 20;
       
-      arrowRotation = angleDiff; // The arrow always points relative to the user's heading.
+      // The arrow's rotation is always relative to the user's heading, pointing towards the target.
+      arrowRotation = angleDiff;
       
-      // If user is facing the correct direction, snap arrow to point up for visual confirmation
       if (Math.abs(angleDiff) <= DIRECTION_THRESHOLD) {
           isCorrectDirection = true;
-          arrowRotation = 0; // Snap to 0 degrees (straight up)
+          arrowRotation = 0; // Snap to 0 degrees for clear feedback
       }
   }
 
@@ -286,10 +285,12 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
                 <div className="text-slate-400">Initializing compass...</div>
             )}
         </div>
-        <div className="mt-4 p-3 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center">
-            <div className='text-center'>
-                <p className="text-sm text-slate-300">Steps Remaining</p>
-                <p className="text-5xl font-bold transition-all duration-200" key={steps}>{steps}</p>
+        <div className="flex justify-center mt-4">
+            <div className="p-3 px-6 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10">
+                <div className='text-center'>
+                    <p className="text-sm text-slate-300">Steps Remaining</p>
+                    <p className="text-5xl font-bold transition-all duration-200" key={steps}>{steps}</p>
+                </div>
             </div>
         </div>
       </footer>
