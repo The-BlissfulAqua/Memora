@@ -183,7 +183,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
   if (navState === 'SELECTION') {
     return (
-      <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
+      <div key="selection" className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
        <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-slate-700"></div>
        <div className="absolute bottom-3 right-3 w-2 h-2 rounded-full bg-slate-700"></div>
 
@@ -224,7 +224,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
     const endAngleDeg = angleRad * 180 / Math.PI;
 
     return (
-      <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
+      <div key="blueprint" className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
         <header className="flex items-center mb-6 border-b border-slate-700/50 pb-4">
             <button onClick={handleBack} className="text-slate-400 text-sm p-2 rounded-full hover:bg-slate-800/50 transition-colors mr-2 flex items-center gap-1">
                 <span className='text-lg'>&larr;</span> Back
@@ -286,7 +286,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between">
+    <div key="navigating" className="fixed inset-0 z-50 bg-black flex flex-col justify-between">
       <video ref={videoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500" style={{ opacity: isArrived ? 0.3 : 1 }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"></div>
       
