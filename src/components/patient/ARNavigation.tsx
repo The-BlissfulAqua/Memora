@@ -33,6 +33,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   // Refs for reliable step detection
   const stepPhase = useRef<'UP' | 'DOWN'>('DOWN');
   const lastStepTimestamp = useRef(0);
+  const lastMotionTime = useRef(0);
   
   // Ref for compass smoothing
   const headingHistoryRef = useRef<number[]>([]);
@@ -78,7 +79,6 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
     };
     
     // --- Step Detection Handling ---
-    const lastMotionTime = useRef(0);
     const handleMotion = (event: DeviceMotionEvent) => {
         const now = Date.now();
         // Throttle processing to avoid overwhelming with sensor data
