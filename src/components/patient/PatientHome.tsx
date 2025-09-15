@@ -51,24 +51,24 @@ const PatientHome: React.FC<PatientHomeProps> = ({ setScreen }) => {
   ];
 
   return (
-    <div className="relative flex flex-col h-[95vh] bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-4 sm:p-6">
+    <div className="relative flex flex-col h-[95vh] bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-4 sm:p-6 overflow-hidden">
        {/* Decorative screws */}
        <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-slate-700"></div>
        <div className="absolute bottom-3 right-3 w-2 h-2 rounded-full bg-slate-700"></div>
        
-      <header className="text-left mb-6 border-b border-slate-700/50 pb-4">
+      <header className="text-left mb-6 border-b border-slate-700/50 pb-4 flex-shrink-0">
         <h1 className="text-3xl font-bold text-white">Memora</h1>
         <p className="text-md text-slate-400 mt-1">Hello! How can I help you today?</p>
       </header>
       
-      {sharedQuote && (
-        <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700/50 text-center">
-            <p className="text-sm text-slate-400 font-semibold">A Thought From Your Family</p>
-            <p className="text-lg text-white italic mt-1">"{sharedQuote.text}"</p>
-        </div>
-      )}
+      <main className="flex-grow flex flex-col space-y-3 overflow-y-auto pr-2 pb-24">
+        {sharedQuote && (
+            <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700/50 text-center flex-shrink-0">
+                <p className="text-sm text-slate-400 font-semibold">A Thought From Your Family</p>
+                <p className="text-lg text-white italic mt-1">"{sharedQuote.text}"</p>
+            </div>
+        )}
 
-      <main className="flex-grow flex flex-col space-y-3 overflow-y-auto pr-2 pb-20">
         {menuItems.map((item) => (
           <MenuItem 
             key={item.name}

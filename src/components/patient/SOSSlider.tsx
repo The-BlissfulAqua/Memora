@@ -80,7 +80,7 @@ const SOSSlider: React.FC<SOSSliderProps> = ({ onActivate }) => {
 
   return (
     <div 
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50"
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50"
         // Move listeners to the full-page container to catch mouse movements outside the slider
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
