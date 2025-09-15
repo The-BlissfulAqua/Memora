@@ -36,7 +36,6 @@ A portal for family members to stay connected and involved in their loved one's 
 - **Frontend:** React, TypeScript, Tailwind CSS
 - **AI/ML:**
     - Google Gemini API (`@google/genai`) for the AI companion and quote generation.
-    - `face-api.js` for client-side emotion and face recognition.
 - **Web APIs:**
     - `getUserMedia` (Camera API)
     - `DeviceOrientationEvent` (Compass/Motion Sensors)
@@ -109,7 +108,7 @@ This is a **one-time setup** that creates a trusted certificate on your machine.
     This creates two files: `localhost.pem` and `localhost-key.pem`. The dev server will automatically detect and use them.
 
 4.  **Run the Server & Connect:**
-    a. Make sure your computer and mobile phone are on the **same Wi-Fi network**.
+    a. Make sure your computer and mobile phone are on the **same Wi--Fi network**.
     b. Start the dev server:
        ```bash
        npm run dev
