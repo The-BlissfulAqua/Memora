@@ -33,6 +33,10 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   // Refs for reliable step detection
   const stepPhase = useRef<'UP' | 'DOWN'>('DOWN');
   const lastStepTimestamp = useRef(0);
+  
+  // Ref for compass smoothing
+  const headingHistoryRef = useRef<number[]>([]);
+  const HEADING_SMOOTHING_WINDOW = 5; // Average over the last 5 readings
 
   // Effect for setting up AND tearing down AR features (camera, compass, motion)
   useEffect(() => {
@@ -42,27 +46,56 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
     let isCancelled = false; // Flag to prevent setup if component unmounts quickly
 
-    // Compass Listener
+    // --- Compass Smoothing and Handling ---
     const handleOrientation = (event: DeviceOrientationEvent) => {
-        if (event.alpha !== null && !isCancelled) {
-            setHeading(event.alpha);
+        if (event.alpha === null || isCancelled) return;
+        
+        const currentAngle = event.alpha;
+        const history = headingHistoryRef.current;
+        history.push(currentAngle);
+        if (history.length > HEADING_SMOOTHING_WINDOW) {
+            history.shift();
         }
+
+        // Circular average calculation to correctly average angles (e.g., 359 & 1 is 0, not 180)
+        let sumSin = 0;
+        let sumCos = 0;
+        for (const angle of history) {
+            const rad = angle * (Math.PI / 180);
+            sumSin += Math.sin(rad);
+            sumCos += Math.cos(rad);
+        }
+        const avgSin = sumSin / history.length;
+        const avgCos = sumCos / history.length;
+        
+        const avgRad = Math.atan2(avgSin, avgCos);
+        let smoothedHeading = avgRad * (180 / Math.PI);
+        if (smoothedHeading < 0) {
+            smoothedHeading += 360;
+        }
+
+        setHeading(smoothedHeading);
     };
     
-    // Reliable Step Detection Listener
+    // --- Step Detection Handling ---
+    const lastMotionTime = useRef(0);
     const handleMotion = (event: DeviceMotionEvent) => {
-        if (!event.acceleration || isCancelled) return;
-
         const now = Date.now();
-        if (now - lastStepTimestamp.current < 400) return; // Cooldown
+        // Throttle processing to avoid overwhelming with sensor data
+        if (now - lastMotionTime.current < 100 || !event.acceleration || isCancelled) return;
+        lastMotionTime.current = now;
+
+        // Use a longer cooldown to better match human walking pace and prevent double counts
+        if (now - lastStepTimestamp.current < 500) return; 
 
         const z = event.acceleration.z ?? 0;
-        const HIGH_THRESHOLD = 11.5;
-        const LOW_THRESHOLD = 8.0;
+        // Increased thresholds for more deliberate step detection and to avoid minor bumps
+        const STEP_UP_THRESHOLD = 12.5; 
+        const STEP_DOWN_THRESHOLD = 9.0;
 
-        if (stepPhase.current === 'DOWN' && z > HIGH_THRESHOLD) {
+        if (stepPhase.current === 'DOWN' && z > STEP_UP_THRESHOLD) {
             stepPhase.current = 'UP';
-        } else if (stepPhase.current === 'UP' && z < LOW_THRESHOLD) {
+        } else if (stepPhase.current === 'UP' && z < STEP_DOWN_THRESHOLD) {
             stepPhase.current = 'DOWN';
             lastStepTimestamp.current = now;
             setSteps(prev => (prev > 0 ? prev - 1 : 0));
@@ -87,8 +120,11 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        
+        // Use 'deviceorientationabsolute' if available for true-north heading, fallback to 'deviceorientation'
+        const orientationEventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
 
-        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener(orientationEventName, handleOrientation as EventListener);
         window.addEventListener('devicemotion', handleMotion);
 
       } catch (err: any) {
@@ -107,7 +143,9 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
     return () => {
       isCancelled = true;
-      window.removeEventListener('deviceorientation', handleOrientation);
+      headingHistoryRef.current = []; // Clear history on cleanup
+      const orientationEventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+      window.removeEventListener(orientationEventName, handleOrientation as EventListener);
       window.removeEventListener('devicemotion', handleMotion);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -228,19 +266,22 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
   if (heading !== null && !isArrived) {
       const targetHeading = destination ? roomLayout[destination].heading : 0;
+      // Calculate the difference between where the user needs to go and where they are currently facing.
       let angleDiff = targetHeading - heading;
       
+      // Normalize the angle to be between -180 and 180 for the shortest turn.
       if (angleDiff > 180) angleDiff -= 360;
       if (angleDiff < -180) angleDiff += 360;
 
-      const DIRECTION_THRESHOLD = 20;
+      const DIRECTION_THRESHOLD = 20; // Allow a 20-degree margin of error.
       
-      // The arrow's rotation is always relative to the user's heading, pointing towards the target.
+      // The arrow's rotation is always the calculated difference, pointing towards the target.
       arrowRotation = angleDiff;
       
+      // If the user is facing the correct direction, snap the arrow to point straight up.
       if (Math.abs(angleDiff) <= DIRECTION_THRESHOLD) {
           isCorrectDirection = true;
-          arrowRotation = 0; // Snap to 0 degrees for clear feedback
+          arrowRotation = 0; 
       }
   }
 
@@ -274,7 +315,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         <div className={`flex items-end justify-center h-24 transition-opacity duration-300 ${isArrived ? 'opacity-0' : 'opacity-100'}`}>
             {heading !== null ? (
                 <div 
-                    className="transition-transform duration-500 ease-out"
+                    className="transition-transform duration-300 ease-out"
                     style={{ transform: `rotate(${arrowRotation}deg)` }}
                 >
                      <svg width="80" height="80" viewBox="0 0 100 100" className="drop-shadow-lg">
