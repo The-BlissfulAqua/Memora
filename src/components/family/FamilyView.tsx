@@ -94,7 +94,7 @@ const FamilyView: React.FC = () => {
       }
   };
 
-  const alertColorClasses = {
+  const alertColorClasses: { [key in Alert['type']]: string } = {
       SOS: 'bg-red-900/50 border-red-700/80 text-red-200',
       FALL: 'bg-orange-900/50 border-orange-700/80 text-orange-200',
   };

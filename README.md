@@ -10,7 +10,6 @@ Memora is a single application with three distinct views, each tailored to a spe
 The primary interface for the person with dementia, designed for simplicity and ease of use.
 - **AR Home Navigation:** Uses the phone's camera and compass to provide simple, turn-by-turn directions to rooms within the home.
 - **AI Companion ("Digi"):** A friendly, voice-enabled AI chatbot for conversation and emotional support, powered by the Gemini API.
-- **Emotion Detection:** Uses the front-facing camera and `face-api.js` to non-intrusively detect the patient's emotional state and log it for caregivers.
 - **Daily Reminders:** Simple, icon-driven reminders for medications, meals, and hydration.
 - **Cognitive Games:** A simple memory matching game to provide gentle mental stimulation.
 - **Memory Album:** A visual album of photos and captions shared by family members.
@@ -20,13 +19,13 @@ The primary interface for the person with dementia, designed for simplicity and 
 
 ### ดูแล Caregiver View
 A dashboard for professional caregivers to manage the patient's daily routine and monitor their well-being.
-- **Alerts Dashboard:** Displays urgent alerts for SOS button presses, falls, and significant negative emotions.
+- **Alerts Dashboard:** Displays urgent alerts for SOS button presses and falls.
 - **Schedule Management:** Add, view, and delete daily reminders for the patient.
 - **Voice Mailbox:** Send and review voice messages with the patient and family.
 
 ### 👨‍👩‍👧 Family View
 A portal for family members to stay connected and involved in their loved one's care.
-- **Activity Timeline:** A real-time log of patient activities, such as completed reminders, detected emotions, and shared memories.
+- **Activity Timeline:** A real-time log of patient activities, such as completed reminders and shared memories.
 - **Share Memories:** Easily upload photos and captions to the patient's Memory Album.
 - **Send Comforting Thoughts:** Use AI to generate and send a short, uplifting quote to the patient's home screen.
 - **Voice Messages:** Share voice notes to stay connected personally.
