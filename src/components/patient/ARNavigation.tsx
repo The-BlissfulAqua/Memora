@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 interface ARNavigationProps {
   onBack: () => void;
@@ -65,50 +66,57 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }, [navState]);
   
   const handleStartARClick = async () => {
-    setArError(null); // Clear previous errors before trying again
+    setArError(null);
     try {
-        // --- PERMISSION REQUESTS ON USER GESTURE ---
-
-        // 1. Request Compass permissions (for iOS)
+        // --- 1. SENSOR PERMISSIONS (COMPASS) ---
+        // This is primarily for iOS Safari and must be requested on user gesture.
         if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
             const permission = await (DeviceOrientationEvent as any).requestPermission();
             if (permission !== 'granted') {
-                throw new Error("Compass permission denied.");
+                throw new Error("Access to motion sensors was denied. Please enable it in your browser settings.");
             }
         }
 
-        // 2. Request camera permissions using Capacitor for native app reliability
-        const permissionStatus = await Camera.requestPermissions();
-        if (permissionStatus.camera !== 'granted') {
-            setArError("Camera access was denied. Please allow it in settings and try again.");
-            return;
+        // --- 2. CAMERA PERMISSIONS & STREAM ---
+        // For native apps, Capacitor's permissions API is best.
+        if (Capacitor.isNativePlatform()) {
+            const permissionStatus = await Camera.requestPermissions();
+            if (permissionStatus.camera !== 'granted') {
+                throw new Error("Camera access was denied. Please enable it in the app settings.");
+            }
         }
-
-        // 3. Get camera stream
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         
+        // This single call works for the web (prompts if needed) and native (after Capacitor grants permission).
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+
         // --- START NAVIGATION ---
         streamRef.current = stream;
         if (videoRef.current) {
             videoRef.current.srcObject = stream;
         }
         
-        setSteps(10); // Reset steps
-        setNavState('NAVIGATING'); // Now switch the view
+        setSteps(10);
+        setNavState('NAVIGATING');
 
     } catch (err: any) {
         console.error("Error starting AR:", err);
         let message = "Could not start AR Navigation. Please check permissions in your settings.";
-         if (err.message.includes("denied")) {
-            message = "Permission for sensors or camera was denied. Please allow it and try again.";
-        } else if (err instanceof DOMException) {
-            if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+
+        if (err instanceof DOMException) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                message = "Permission for the camera or sensors was denied. Please allow access and try again.";
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
                 message = "No back-facing camera found on this device.";
             }
+        } else if (err.message) {
+            // Use the specific message from our thrown error if available.
+            message = err.message;
         }
+
         setArError(message);
     }
   };
+
 
   const handleBack = () => {
     setSteps(10);

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Camera } from '@capacitor/camera';
+import { Capacitor } from '@capacitor/core';
 
 // Reference to the global faceapi object from the script tag
 declare const faceapi: any;
@@ -51,21 +52,30 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
     const startVideo = async () => {
         try {
             setLoadingMessage('Requesting camera permission...');
-            const permissionStatus = await Camera.requestPermissions();
-             if (permissionStatus.camera !== 'granted') {
-                setLoadingMessage("Camera access denied. Please allow it in settings to use this feature.");
-                return;
+            
+            // Conditionally check permissions for native builds
+            if (Capacitor.isNativePlatform()) {
+                const permissionStatus = await Camera.requestPermissions();
+                if (permissionStatus.camera !== 'granted') {
+                    setLoadingMessage("Camera access denied. Please enable it in the app settings.");
+                    return;
+                }
             }
 
             setLoadingMessage('Starting camera...');
+            // On the web, this call alone will trigger the permission prompt.
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-             if (videoRef.current) {
+            if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 setIsCameraOn(true);
             }
         } catch (err) {
              console.error("Error starting video stream:", err);
-             setLoadingMessage('Could not access camera.');
+             let message = "Could not access camera.";
+             if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+                message = "Camera access was denied. Please allow it in your browser settings.";
+             }
+             setLoadingMessage(message);
         }
     };
 
@@ -142,7 +152,7 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
 
     useEffect(() => {
         const video = videoRef.current;
-        if (video) {
+        if (video && isCameraOn) {
             video.addEventListener('play', handleVideoPlay);
             return () => {
               if (video) video.removeEventListener('play', handleVideoPlay)
