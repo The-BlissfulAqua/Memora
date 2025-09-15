@@ -107,8 +107,6 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         
         if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            // This is crucial to ensure the video plays on all devices
-            await videoRef.current.play();
         }
         
         setSteps(10); // Reset steps for new journey
@@ -238,13 +236,12 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
       const DIRECTION_THRESHOLD = 20; // 20 degrees of leeway
       
-      // If user is facing the correct direction, snap arrow to point up
+      arrowRotation = angleDiff; // The arrow always points relative to the user's heading.
+      
+      // If user is facing the correct direction, snap arrow to point up for visual confirmation
       if (Math.abs(angleDiff) <= DIRECTION_THRESHOLD) {
           isCorrectDirection = true;
-          arrowRotation = 0;
-      } else {
-          isCorrectDirection = false;
-          arrowRotation = angleDiff; // Point in the direction of the turn
+          arrowRotation = 0; // Snap to 0 degrees (straight up)
       }
   }
 
@@ -274,9 +271,9 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
           </div>
       )}
 
-      <footer className="relative z-10 p-6 text-white">
+      <footer className="relative z-10 p-4 sm:p-6 text-white">
         <div className={`flex items-end justify-center h-24 transition-opacity duration-300 ${isArrived ? 'opacity-0' : 'opacity-100'}`}>
-            {heading !== null && (
+            {heading !== null ? (
                 <div 
                     className="transition-transform duration-500 ease-out"
                     style={{ transform: `rotate(${arrowRotation}deg)` }}
@@ -285,15 +282,14 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
                         <polygon points="50,0 100,100 50,75 0,100" className={`transition-all duration-300 ${isCorrectDirection ? 'fill-green-400 animate-pulse' : 'fill-white/80'}`}/>
                     </svg>
                 </div>
+            ) : (
+                <div className="text-slate-400">Initializing compass...</div>
             )}
         </div>
-        <div className="mt-4 p-4 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between">
-            <div>
+        <div className="mt-4 p-3 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center">
+            <div className='text-center'>
                 <p className="text-sm text-slate-300">Steps Remaining</p>
                 <p className="text-5xl font-bold transition-all duration-200" key={steps}>{steps}</p>
-            </div>
-            <div className="h-12 text-center flex items-center justify-center w-48">
-                {heading === null && <p className="text-slate-400">Initializing...</p>}
             </div>
         </div>
       </footer>

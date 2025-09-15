@@ -6,10 +6,8 @@ import RemindersList from './RemindersList';
 import CognitiveGames from './CognitiveGames';
 import MemoryAlbumView from './MemoryAlbumView';
 import VoiceMessages from './VoiceMessages';
-import WhoIsThis from './WhoIsThis';
 import { PatientScreen } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { Motion } from '@capacitor/motion';
 
 const PatientView: React.FC = () => {
   const { dispatch } = useAppContext();
@@ -18,43 +16,37 @@ const PatientView: React.FC = () => {
   // Fall Detection Logic
   useEffect(() => {
     const FALL_THRESHOLD = 25; // m/s^2, a threshold for fall detection
-    
-    const startFallDetection = async () => {
-        try {
-            // fix: Remove call to `Motion.requestPermissions()` as it does not exist on the Motion plugin.
-            // On native platforms, permissions are configured in the project files (Info.plist, AndroidManifest.xml).
-            // The addListener call should trigger any necessary OS-level permission prompts.
-            await Motion.addListener('accel', (event) => {
-                const { x, y, z } = event.acceleration;
-                const magnitude = Math.sqrt(x * x + y * y + z * z);
-                
-                if (magnitude > FALL_THRESHOLD) {
-                    console.log('Potential fall detected! Magnitude:', magnitude);
-                    dispatch({
-                        type: 'TRIGGER_SOS',
-                        payload: {
-                            id: new Date().toISOString(),
-                            message: 'Potential Fall Detected!',
-                            timestamp: new Date().toLocaleString(),
-                            type: 'FALL',
-                        },
-                    });
-                    // To prevent multiple alerts, a cooldown could be added here in a real app.
-                }
-            });
+    let lastReadingTime = Date.now();
 
-        } catch (e) {
-            console.error('Error setting up fall detection:', e);
+    const handleMotionEvent = (event: DeviceMotionEvent) => {
+      if (Date.now() - lastReadingTime < 100) return; // Throttle readings
+      lastReadingTime = Date.now();
+
+      const acc = event.accelerationIncludingGravity;
+      if (acc && acc.x != null && acc.y != null && acc.z != null) {
+        const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+        if (magnitude > FALL_THRESHOLD) {
+          console.log('Potential fall detected! Magnitude:', magnitude);
+          dispatch({
+            type: 'TRIGGER_SOS',
+            payload: {
+              id: new Date().toISOString(),
+              message: 'Potential Fall Detected!',
+              timestamp: new Date().toLocaleString(),
+              type: 'FALL',
+            },
+          });
+          // To prevent multiple alerts, a cooldown could be added here in a real app.
         }
+      }
     };
-    
-    // Attempt to start fall detection. In a web context, this might not work
-    // without a prior user gesture, but it's the correct approach for a Capacitor app.
-    startFallDetection();
+
+    // Note: In a production app, iOS 13+ requires explicit user permission for motion events,
+    // usually triggered by a button click. For this demo, we assume permission is granted.
+    window.addEventListener('devicemotion', handleMotionEvent);
 
     return () => {
-      // Clean up listeners when the component unmounts
-      Motion.removeAllListeners();
+      window.removeEventListener('devicemotion', handleMotionEvent);
     };
   }, [dispatch]);
 
@@ -75,8 +67,6 @@ const PatientView: React.FC = () => {
         return <MemoryAlbumView onBack={() => setScreen(PatientScreen.HOME)} />;
       case PatientScreen.VOICE_MESSAGES:
         return <VoiceMessages onBack={() => setScreen(PatientScreen.HOME)} />;
-      case PatientScreen.WHO_IS_THIS:
-        return <WhoIsThis onBack={() => setScreen(PatientScreen.HOME)} />;
       default:
         return <PatientHome setScreen={setScreen} />;
     }

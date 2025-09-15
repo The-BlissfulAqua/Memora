@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Alert, VoiceMessage, SenderRole } from '../../types';
 import PillIcon from '../icons/PillIcon';
@@ -9,29 +9,6 @@ import FallIcon from '../icons/FallIcon';
 import CompanionIcon from '../icons/CompanionIcon';
 import VoiceMessagePlayer from '../shared/VoiceMessagePlayer';
 import VoiceRecorder from '../shared/VoiceRecorder';
-
-// Helper function to play a sound using Web Audio API
-const playAlertSound = () => {
-    try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-
-        oscillator.start(audioContext.currentTime);
-        // Beep for 0.5s, then stop
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-        oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (e) {
-        console.error("Could not play alert sound:", e);
-    }
-};
 
 const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; className?: string }> = ({ icon, className }) => {
     switch (icon) {
@@ -46,17 +23,6 @@ const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; classN
 const CaregiverView: React.FC = () => {
   const { state, dispatch } = useAppContext();
   const { reminders, alerts, voiceMessages } = state;
-  const previousAlertsCount = useRef(alerts.length);
-
-  useEffect(() => {
-    if (alerts.length > previousAlertsCount.current) {
-        const newAlert = alerts[0]; // The newest alert is always at the beginning
-        if (newAlert.type === 'SOS' || newAlert.type === 'FALL') {
-            playAlertSound();
-        }
-    }
-    previousAlertsCount.current = alerts.length;
-  }, [alerts]);
 
   const deleteReminder = (id: string) => {
     if (window.confirm('Are you sure you want to delete this reminder?')) {
@@ -92,7 +58,6 @@ const CaregiverView: React.FC = () => {
   const AlertIcon: React.FC<{ type: Alert['type'] }> = ({ type }) => {
       switch (type) {
           case 'FALL': return <FallIcon className="w-6 h-6" />;
-          case 'EMOTION': return <CompanionIcon className="w-6 h-6" />;
           case 'SOS': return <span className="text-xl">🚨</span>;
           default: return <span className="text-xl">⚠️</span>;
       }
@@ -101,7 +66,6 @@ const CaregiverView: React.FC = () => {
   const alertColorClasses = {
       SOS: 'bg-red-900/50 border-red-700/80 text-red-200',
       FALL: 'bg-orange-900/50 border-orange-700/80 text-orange-200',
-      EMOTION: 'bg-blue-900/50 border-blue-700/80 text-blue-200',
   };
 
 

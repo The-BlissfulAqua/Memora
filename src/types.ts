@@ -10,7 +10,7 @@ export interface Alert {
   id: string;
   message: string;
   timestamp: string;
-  type: 'SOS' | 'FALL' | 'EMOTION';
+  type: 'SOS' | 'FALL';
 }
 
 export interface Memory {
@@ -62,7 +62,6 @@ export enum PatientScreen {
     COGNITIVE_GAMES = 'COGNITIVE_GAMES',
     MEMORY_ALBUM = 'MEMORY_ALBUM',
     VOICE_MESSAGES = 'VOICE_MESSAGES',
-    WHO_IS_THIS = 'WHO_IS_THIS',
 }
 
 export type AppAction =
@@ -72,5 +71,4 @@ export type AppAction =
   | { type: 'TRIGGER_SOS'; payload: Alert }
   | { type: 'ADD_MEMORY'; payload: Memory }
   | { type: 'ADD_QUOTE'; payload: SharedQuote }
-  | { type: 'LOG_EMOTION'; payload: { emotion: string } }
   | { type: 'ADD_VOICE_MESSAGE'; payload: VoiceMessage };

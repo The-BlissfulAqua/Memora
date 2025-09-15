@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { getAIComfortingQuote, isGeminiConfigured, missingApiKeyError } from '../../services/geminiService';
 import { Memory, SharedQuote, Alert, EventLogItem, VoiceMessage, SenderRole } from '../../types';
@@ -12,29 +12,6 @@ import ImageIcon from '../icons/ImageIcon';
 import VoiceMessagePlayer from '../shared/VoiceMessagePlayer';
 import VoiceRecorder from '../shared/VoiceRecorder';
 
-// Helper function to play a sound using Web Audio API
-const playAlertSound = () => {
-    try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-
-        oscillator.start(audioContext.currentTime);
-        // Beep for 0.5s, then stop
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-        oscillator.stop(audioContext.currentTime + 0.5);
-    } catch(e) {
-        console.error("Could not play alert sound:", e);
-    }
-};
-
 const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; className?: string }> = ({ icon, className }) => {
     switch (icon) {
         case 'medication': return <PillIcon className={className} />;
@@ -47,22 +24,11 @@ const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; classN
 const FamilyView: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const { reminders, alerts, eventLog, voiceMessages } = state;
-    const previousAlertsCount = useRef(alerts.length);
 
     const [imageUrl, setImageUrl] = useState('');
     const [caption, setCaption] = useState('');
     const [sharedBy, setSharedBy] = useState('');
     const [isSendingQuote, setIsSendingQuote] = useState(false);
-
-    useEffect(() => {
-        if (alerts.length > previousAlertsCount.current) {
-            const newAlert = alerts[0]; // The newest alert is always at the beginning
-            if (newAlert.type === 'SOS' || newAlert.type === 'FALL') {
-                playAlertSound();
-            }
-        }
-        previousAlertsCount.current = alerts.length;
-    }, [alerts]);
 
     const handleAddMemory = (e: React.FormEvent) => {
         e.preventDefault();
@@ -123,7 +89,6 @@ const FamilyView: React.FC = () => {
   const AlertIcon: React.FC<{ type: Alert['type'] }> = ({ type }) => {
       switch (type) {
           case 'FALL': return <FallIcon className="w-6 h-6" />;
-          case 'EMOTION': return <CompanionIcon className="w-6 h-6" />;
           case 'SOS': return <span className="text-xl">🚨</span>;
           default: return <span className="text-xl">⚠️</span>;
       }
@@ -132,7 +97,6 @@ const FamilyView: React.FC = () => {
   const alertColorClasses = {
       SOS: 'bg-red-900/50 border-red-700/80 text-red-200',
       FALL: 'bg-orange-900/50 border-orange-700/80 text-orange-200',
-      EMOTION: 'bg-blue-900/50 border-blue-700/80 text-blue-200',
   };
 
   const EventIcon: React.FC<{ icon: EventLogItem['icon'] }> = ({ icon }) => {
@@ -198,7 +162,7 @@ const FamilyView: React.FC = () => {
          <form onSubmit={handleAddMemory} className="space-y-3">
              <input type="text" placeholder="Image URL" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm"/>
              <textarea placeholder="Caption for the memory" value={caption} onChange={e => setCaption(e.target.value)} rows={2} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm"/>
-             <button type="submit" className="w-full px-5 py-2 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm" disabled={!sharedBy.trim()}>Share Memory</button>
+             <button type="submit" className="w-full px-5 py-2 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">Share Memory</button>
         </form>
       </div>
       
