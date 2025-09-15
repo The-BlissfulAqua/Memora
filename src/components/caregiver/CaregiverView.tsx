@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Alert, VoiceMessage, SenderRole } from '../../types';
 import PillIcon from '../icons/PillIcon';
