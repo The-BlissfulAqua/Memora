@@ -20,7 +20,7 @@ const initialState: AppState = {
   memories: [
     {
       id: 'mem1',
-      imageUrl: 'https://images.unsplash.com/photo-1558032761-e50cf35451a9?q=80&w=2070&auto=format&fit=crop',
+      imageUrl: 'https://picsum.photos/seed/memora/800/600',
       caption: 'That wonderful day we spent at the beach with the grandkids. Remember how much they loved the ice cream?',
       sharedBy: 'Your Daughter, Jane'
     }
@@ -33,16 +33,7 @@ const initialState: AppState = {
     text: 'Just a little note to say we are thinking of you today!',
     timestamp: new Date().toLocaleString()
   },
-  voiceMessages: [
-      { 
-          id: 'vm1', 
-          audioUrl: 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAsYVVYA', // Placeholder for a real audio file
-          duration: 5,
-          senderRole: SenderRole.FAMILY, 
-          senderName: 'Your Grandson, Leo',
-          timestamp: '10:30 AM'
-      },
-  ],
+  voiceMessages: [],
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {

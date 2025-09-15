@@ -29,6 +29,7 @@ const FamilyView: React.FC = () => {
     const [caption, setCaption] = useState('');
     const [sharedBy, setSharedBy] = useState('');
     const [isSendingQuote, setIsSendingQuote] = useState(false);
+    const [customThought, setCustomThought] = useState('');
 
     const handleAddMemory = (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,7 +49,7 @@ const FamilyView: React.FC = () => {
         setCaption('');
     };
     
-    const handleSendQuote = async () => {
+    const handleSendAIQuote = async () => {
         if (!isGeminiConfigured) {
             alert(missingApiKeyError);
             return;
@@ -72,6 +73,18 @@ const FamilyView: React.FC = () => {
         } finally {
             setIsSendingQuote(false);
         }
+    };
+
+    const handleSendCustomQuote = () => {
+        if (customThought.trim() === '') return;
+        const newQuote: SharedQuote = {
+            id: new Date().toISOString(),
+            text: customThought.trim(),
+            timestamp: new Date().toLocaleString(),
+        };
+        dispatch({ type: 'ADD_QUOTE', payload: newQuote });
+        setCustomThought('');
+        alert("Your thought has been sent!");
     };
     
     const handleNewVoiceMessage = (audioUrl: string, duration: number) => {
@@ -168,15 +181,33 @@ const FamilyView: React.FC = () => {
       
       <div className="p-4 bg-slate-800/40 rounded-xl shadow-md border border-slate-700/50">
         <h2 className="text-xl font-bold text-gray-300 mb-3">Send a Comforting Thought</h2>
-        <p className='text-sm text-slate-400 mb-3'>Send a short, positive message to your loved one's home screen. Powered by AI.</p>
-        <button 
-          onClick={handleSendQuote} 
-          disabled={isSendingQuote || !isGeminiConfigured} 
-          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          title={!isGeminiConfigured ? 'API Key not configured. See README.md' : 'Send an AI-generated thought'}
-        >
-            {isSendingQuote ? 'Sending...' : <> <CompanionIcon className="w-5 h-5"/> Send Thought </>}
-        </button>
+        <p className='text-sm text-slate-400 mb-3'>Send a short, positive message to your loved one's home screen.</p>
+        <div className="space-y-3">
+            <button 
+              onClick={handleSendAIQuote} 
+              disabled={isSendingQuote || !isGeminiConfigured} 
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!isGeminiConfigured ? 'API Key not configured. See README.md' : 'Send an AI-generated thought'}
+            >
+                {isSendingQuote ? 'Generating...' : <> <CompanionIcon className="w-5 h-5"/> Generate & Send Thought </>}
+            </button>
+            <div className="flex items-center gap-2 border-t border-slate-700/50 pt-3">
+                <input
+                    type="text"
+                    placeholder="Or write a personal message..."
+                    value={customThought}
+                    onChange={(e) => setCustomThought(e.target.value)}
+                    className="flex-grow px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm"
+                />
+                <button
+                    onClick={handleSendCustomQuote}
+                    disabled={!customThought.trim()}
+                    className="flex-shrink-0 px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-400 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Send
+                </button>
+            </div>
+        </div>
       </div>
 
       <div className="p-4 bg-slate-800/40 rounded-xl shadow-md border border-slate-700/50">
