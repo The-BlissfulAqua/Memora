@@ -45,17 +45,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       rollupOptions: {
-        // Externalize dependencies that are provided by the import map in index.html.
-        // This prevents the build from failing when it can't find these locally.
-        external: [
-          'react',
-          '@google/genai',
-          '@capacitor/camera',
-          '@capacitor/motion',
-          // Use regex to match imports like 'react-dom/client'
-          /^react-dom\/.*/,
-          /^react\/.*/
-        ]
+        // Dependencies are now bundled by Vite, so the external option is no longer needed.
       }
     },
     define: {
