@@ -32,57 +32,25 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const [arError, setArError] = useState<string | null>(null);
   const [arStep, setArStep] = useState(0); // For simulating walking progress
 
-  // Effect for setting up and tearing down AR features (camera and compass)
+  // Effect for tearing down AR features (camera and compass)
   useEffect(() => {
-    if (navState !== 'NAVIGATING') {
-      return;
-    }
-
-    let isMounted = true;
-    let orientationCleanup: (() => void) | null = null;
-
-    const startARListeners = async () => {
-        setArError(null); // Clear previous errors
-
-        // The stream should have been acquired by the button click. Assign it.
-        if (isMounted && videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-        } else if (isMounted) {
-            setArError("Camera is not available.");
-            return;
-        }
-
-        // Request compass permissions and add listener
-        try {
-            if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-                const permission = await (DeviceOrientationEvent as any).requestPermission();
-                if (permission !== 'granted') {
-                    throw new Error("Compass permission denied.");
-                }
-            }
-        } catch (e) {
-            console.warn("Could not request orientation permission. This may fail on iOS.", e);
-            if (isMounted) setArError("Compass permission denied.");
-        }
-
-        const handleOrientation = (event: DeviceOrientationEvent) => {
-            if (event.alpha !== null && isMounted) {
+    let orientationHandler: ((event: DeviceOrientationEvent) => void) | null = null;
+    
+    // Assign listener only when navigating
+    if (navState === 'NAVIGATING') {
+        orientationHandler = (event: DeviceOrientationEvent) => {
+            if (event.alpha !== null) {
                 setHeading(event.alpha);
             }
         };
-
-        window.addEventListener('deviceorientation', handleOrientation);
-        orientationCleanup = () => window.removeEventListener('deviceorientation', handleOrientation);
-    };
-
-    startARListeners();
-
-    // Cleanup function for the effect
+        window.addEventListener('deviceorientation', orientationHandler);
+    }
+    
+    // Cleanup function
     return () => {
-        isMounted = false;
         // Clean up compass listener
-        if (orientationCleanup) {
-            orientationCleanup();
+        if (orientationHandler) {
+            window.removeEventListener('deviceorientation', orientationHandler);
         }
         // Stop camera stream tracks
         if (streamRef.current) {
@@ -99,25 +67,42 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const handleStartARClick = async () => {
     setArError(null); // Clear previous errors before trying again
     try {
-        // Request camera permissions using Capacitor for native app reliability
+        // --- PERMISSION REQUESTS ON USER GESTURE ---
+
+        // 1. Request Compass permissions (for iOS)
+        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+            const permission = await (DeviceOrientationEvent as any).requestPermission();
+            if (permission !== 'granted') {
+                throw new Error("Compass permission denied.");
+            }
+        }
+
+        // 2. Request camera permissions using Capacitor for native app reliability
         const permissionStatus = await Camera.requestPermissions();
         if (permissionStatus.camera !== 'granted') {
             setArError("Camera access was denied. Please allow it in settings and try again.");
             return;
         }
 
-        // Request camera directly on click to ensure it's a user gesture
+        // 3. Get camera stream
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        streamRef.current = stream; // Store the stream in the ref
+        
+        // --- START NAVIGATION ---
+        streamRef.current = stream;
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
+        
         setArStep(0);
         setNavState('NAVIGATING'); // Now switch the view
-    } catch (err) {
-        console.error("Error accessing camera:", err);
-        let message = "Could not access camera. Please check permissions in your settings.";
-        if (err instanceof DOMException) {
-            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                message = "Camera access was denied. Please allow it and try again.";
-            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+
+    } catch (err: any) {
+        console.error("Error starting AR:", err);
+        let message = "Could not start AR Navigation. Please check permissions in your settings.";
+         if (err.message.includes("denied")) {
+            message = "Permission for sensors or camera was denied. Please allow it and try again.";
+        } else if (err instanceof DOMException) {
+            if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
                 message = "No back-facing camera found on this device.";
             }
         }

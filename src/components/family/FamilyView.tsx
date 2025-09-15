@@ -14,21 +14,25 @@ import VoiceRecorder from '../shared/VoiceRecorder';
 
 // Helper function to play a sound using Web Audio API
 const playAlertSound = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
-    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
 
-    oscillator.start(audioContext.currentTime);
-    // Beep for 0.5s, pause 0.5s, then beep again for 4s total duration = 5s
-    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-    oscillator.stop(audioContext.currentTime + 5);
+        oscillator.start(audioContext.currentTime);
+        // Beep for 0.5s, then stop
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch(e) {
+        console.error("Could not play alert sound:", e);
+    }
 };
 
 const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; className?: string }> = ({ icon, className }) => {
@@ -135,7 +139,6 @@ const FamilyView: React.FC = () => {
     switch (icon) {
         case 'sos': return <span className="text-red-400">🚨</span>;
         case 'fall': return <FallIcon className="w-4 h-4 text-orange-400"/>;
-        case 'emotion': return <CompanionIcon className="w-4 h-4 text-blue-400"/>;
         case 'reminder': return <RemindersIcon className="w-4 h-4 text-green-400"/>;
         case 'task': return <RemindersIcon className="w-4 h-4 text-slate-400"/>;
         case 'memory': return <ImageIcon className="w-4 h-4 text-purple-400"/>;
@@ -195,7 +198,7 @@ const FamilyView: React.FC = () => {
          <form onSubmit={handleAddMemory} className="space-y-3">
              <input type="text" placeholder="Image URL" value={imageUrl} onChange={e => setImageUrl(e.target.value)} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm"/>
              <textarea placeholder="Caption for the memory" value={caption} onChange={e => setCaption(e.target.value)} rows={2} className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm"/>
-             <button type="submit" className="w-full px-5 py-2 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">Share Memory</button>
+             <button type="submit" className="w-full px-5 py-2 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm" disabled={!sharedBy.trim()}>Share Memory</button>
         </form>
       </div>
       

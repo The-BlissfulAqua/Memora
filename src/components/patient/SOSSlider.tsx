@@ -48,22 +48,45 @@ const SOSSlider: React.FC<SOSSliderProps> = ({ onActivate }) => {
   
   // Mouse Events
   const onMouseDown = (e: MouseEvent<HTMLDivElement>) => handleDragStart(e.clientX);
-  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => handleDragMove(e.clientX);
-  const onMouseUp = () => handleDragEnd();
-  const onMouseLeave = () => handleDragEnd();
+  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+      // We listen on the parent, but only if dragging has started
+      if (isDragging) {
+        handleDragMove(e.clientX);
+      }
+  }
+  const onMouseUp = () => {
+      if (isDragging) {
+          handleDragEnd();
+      }
+  }
+  const onMouseLeave = () => {
+      if (isDragging) {
+          handleDragEnd();
+      }
+  }
 
   // Touch Events
   const onTouchStart = (e: TouchEvent<HTMLDivElement>) => handleDragStart(e.touches[0].clientX);
-  const onTouchMove = (e: TouchEvent<HTMLDivElement>) => handleDragMove(e.touches[0].clientX);
-  const onTouchEnd = () => handleDragEnd();
+  const onTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+      if (isDragging) {
+        handleDragMove(e.touches[0].clientX);
+      }
+  }
+  const onTouchEnd = () => {
+      if (isDragging) {
+        handleDragEnd();
+      }
+  }
 
   return (
     <div 
         className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50"
+        // Move listeners to the full-page container to catch mouse movements outside the slider
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
         onMouseMove={onMouseMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
         onTouchMove={onTouchMove}
     >
       <div 

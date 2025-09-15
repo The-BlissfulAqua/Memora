@@ -16,6 +16,7 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [loadingMessage, setLoadingMessage] = useState('Loading AI models...');
     const [isReady, setIsReady] = useState(false);
+    const [isCameraOn, setIsCameraOn] = useState(false);
     const intervalRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -31,27 +32,7 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
             ]);
-
-            setLoadingMessage('Starting camera...');
-            startVideo();
-        };
-
-        const startVideo = async () => {
-            try {
-                const permissionStatus = await Camera.requestPermissions();
-                 if (permissionStatus.camera !== 'granted') {
-                    setLoadingMessage("Camera access denied. Please allow it in settings to use this feature.");
-                    return;
-                }
-
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                 if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (err) {
-                 console.error("Error starting video stream:", err);
-                 setLoadingMessage('Could not access camera.');
-            }
+            setLoadingMessage('Ready to start camera.');
         };
 
         loadFaceApi();
@@ -66,6 +47,27 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
             }
         };
     }, []);
+
+    const startVideo = async () => {
+        try {
+            setLoadingMessage('Requesting camera permission...');
+            const permissionStatus = await Camera.requestPermissions();
+             if (permissionStatus.camera !== 'granted') {
+                setLoadingMessage("Camera access denied. Please allow it in settings to use this feature.");
+                return;
+            }
+
+            setLoadingMessage('Starting camera...');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+             if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                setIsCameraOn(true);
+            }
+        } catch (err) {
+             console.error("Error starting video stream:", err);
+             setLoadingMessage('Could not access camera.');
+        }
+    };
 
     const handleVideoPlay = async () => {
         setLoadingMessage('Analyzing faces from memory album...');
@@ -143,10 +145,10 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
         if (video) {
             video.addEventListener('play', handleVideoPlay);
             return () => {
-              video.removeEventListener('play', handleVideoPlay)
+              if (video) video.removeEventListener('play', handleVideoPlay)
             }
         }
-    }, [memories]);
+    }, [memories, isCameraOn]);
 
     return (
         <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
@@ -158,13 +160,26 @@ const WhoIsThis: React.FC<WhoIsThisProps> = ({ onBack }) => {
             </header>
 
             <main className="flex-grow flex flex-col items-center justify-center relative">
-                {!isReady && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-20">
-                        <div className="w-16 h-16 border-4 border-t-transparent border-slate-500 rounded-full animate-spin"></div>
-                        <p className="mt-4 text-slate-300">{loadingMessage}</p>
-                    </div>
-                )}
-                <div className="relative w-full max-w-full aspect-[3/4] overflow-hidden rounded-lg shadow-lg bg-black">
+                <div className="relative w-full max-w-full aspect-[3/4] overflow-hidden rounded-lg shadow-lg bg-black flex items-center justify-center">
+                    {!isCameraOn ? (
+                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-20 p-4">
+                            <p className="text-slate-300 text-center mb-4">{loadingMessage}</p>
+                            <button 
+                                onClick={startVideo} 
+                                disabled={loadingMessage.includes('Loading')}
+                                className="px-6 py-3 bg-slate-700 text-white font-bold rounded-full shadow-lg hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                            >
+                                Start Camera
+                            </button>
+                        </div>
+                    ) : (
+                        !isReady && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-20">
+                                <div className="w-16 h-16 border-4 border-t-transparent border-slate-500 rounded-full animate-spin"></div>
+                                <p className="mt-4 text-slate-300">{loadingMessage}</p>
+                            </div>
+                        )
+                    )}
                     <video ref={videoRef} autoPlay muted playsInline className="absolute top-0 left-0 w-full h-full object-cover transform -scale-x-100"></video>
                     <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full transform -scale-x-100"></canvas>
                 </div>

@@ -21,13 +21,9 @@ const PatientView: React.FC = () => {
     
     const startFallDetection = async () => {
         try {
-            // Check and request permissions for motion sensors on native devices
-            const permissions = await Motion.requestPermissions();
-            if (permissions.motion !== 'granted') {
-                console.warn('Motion permission not granted. Fall detection disabled.');
-                return;
-            }
-
+            // fix: Remove call to `Motion.requestPermissions()` as it does not exist on the Motion plugin.
+            // On native platforms, permissions are configured in the project files (Info.plist, AndroidManifest.xml).
+            // The addListener call should trigger any necessary OS-level permission prompts.
             await Motion.addListener('accel', (event) => {
                 const { x, y, z } = event.acceleration;
                 const magnitude = Math.sqrt(x * x + y * y + z * z);
@@ -52,6 +48,8 @@ const PatientView: React.FC = () => {
         }
     };
     
+    // Attempt to start fall detection. In a web context, this might not work
+    // without a prior user gesture, but it's the correct approach for a Capacitor app.
     startFallDetection();
 
     return () => {

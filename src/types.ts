@@ -24,7 +24,7 @@ export interface EventLogItem {
     id: string;
     text: string;
     timestamp: string;
-    icon: 'reminder' | 'sos' | 'task' | 'memory' | 'fall' | 'emotion';
+    icon: 'reminder' | 'sos' | 'task' | 'memory' | 'fall';
 }
 
 export interface SharedQuote {

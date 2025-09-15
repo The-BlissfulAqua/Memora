@@ -111,26 +111,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
             ...state,
             sharedQuote: action.payload
         };
-    case 'LOG_EMOTION':
-      const emotion = action.payload.emotion;
-      const newEmotionAlert: Alert = {
-          id: new Date().toISOString(),
-          message: `Patient seems to be feeling ${emotion}.`,
-          timestamp: new Date().toLocaleString(),
-          type: 'EMOTION'
-      };
-      const newEmotionEvent: EventLogItem = {
-          id: new Date().toISOString(),
-          text: `Detected emotion: ${emotion}.`,
-          timestamp: new Date().toLocaleString(),
-          icon: 'emotion'
-      };
-      const isNegativeEmotion = ['sad', 'angry', 'fearful', 'disgusted'].includes(emotion);
-      return {
-          ...state,
-          alerts: isNegativeEmotion ? [newEmotionAlert, ...state.alerts] : state.alerts,
-          eventLog: [newEmotionEvent, ...state.eventLog],
-      };
+    case 'LOG_EMOTION': // This action is no longer used but is kept to prevent type errors if not removed everywhere.
+      console.warn("LOG_EMOTION action is deprecated.");
+      return state;
     case 'ADD_VOICE_MESSAGE':
         return {
             ...state,

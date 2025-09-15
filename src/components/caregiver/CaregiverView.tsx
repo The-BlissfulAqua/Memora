@@ -12,21 +12,25 @@ import VoiceRecorder from '../shared/VoiceRecorder';
 
 // Helper function to play a sound using Web Audio API
 const playAlertSound = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
-    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A sharp, clear tone
+        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
 
-    oscillator.start(audioContext.currentTime);
-    // Beep for 0.5s, pause 0.5s, then beep again for 4s total duration = 5s
-    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-    oscillator.stop(audioContext.currentTime + 5);
+        oscillator.start(audioContext.currentTime);
+        // Beep for 0.5s, then stop
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        console.error("Could not play alert sound:", e);
+    }
 };
 
 const ReminderIcon: React.FC<{ icon: 'medication' | 'meal' | 'hydration'; className?: string }> = ({ icon, className }) => {
