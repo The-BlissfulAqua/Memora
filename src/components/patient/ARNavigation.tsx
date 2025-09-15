@@ -286,7 +286,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="relative w-full h-[95vh] bg-black overflow-hidden rounded-3xl shadow-2xl flex flex-col justify-between border border-slate-700/50">
+    <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between">
       <video ref={videoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500" style={{ opacity: isArrived ? 0.3 : 1 }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"></div>
       
@@ -313,7 +313,11 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
       <footer className="relative z-10 p-4 sm:p-6 text-white">
         <div className={`flex items-end justify-center h-24 transition-opacity duration-300 ${isArrived ? 'opacity-0' : 'opacity-100'}`}>
-            {heading !== null ? (
+            {arError ? (
+                <div className="p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg text-sm text-center">
+                    {arError}
+                </div>
+            ) : heading !== null ? (
                 <div 
                     className="transition-transform duration-300 ease-out"
                     style={{ transform: `rotate(${arrowRotation}deg)` }}
@@ -323,7 +327,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
                     </svg>
                 </div>
             ) : (
-                <div className="text-slate-400">Initializing compass...</div>
+                <div className="text-slate-400">Initializing sensors...</div>
             )}
         </div>
         <div className="flex justify-center mt-4">
