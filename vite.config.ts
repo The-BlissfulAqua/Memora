@@ -43,6 +43,21 @@ export default defineConfig(({ mode }) => {
       https: httpsConfig,
       host: true,  // Expose to the network to allow access from mobile devices
     },
+    build: {
+      rollupOptions: {
+        // Externalize dependencies that are provided by the import map in index.html.
+        // This prevents the build from failing when it can't find these locally.
+        external: [
+          'react',
+          '@google/genai',
+          '@capacitor/camera',
+          '@capacitor/motion',
+          // Use regex to match imports like 'react-dom/client'
+          /^react-dom\/.*/,
+          /^react\/.*/
+        ]
+      }
+    },
     define: {
       // Expose the API key to the app as process.env.API_KEY, as expected by the geminiService.
       'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY)
