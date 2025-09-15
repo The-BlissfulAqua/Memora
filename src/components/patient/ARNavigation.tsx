@@ -34,7 +34,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   // Refs for reliable step detection
   const stepPhase = useRef<'UP' | 'DOWN'>('DOWN');
   const lastStepTimestamp = useRef(0);
-  const lastMotionTime = useRef(Date.now()); // Initialize to now
+  const lastMotionTime = useRef(Date.now());
   
   // Ref for compass smoothing
   const headingHistoryRef = useRef<number[]>([]);
@@ -56,6 +56,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         history.push(currentAngle);
         if (history.length > HEADING_SMOOTHING_WINDOW) history.shift();
 
+        // Circular average calculation for smoothing
         let sumSin = 0, sumCos = 0;
         for (const angle of history) {
             const rad = angle * (Math.PI / 180);
@@ -65,16 +66,18 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         
         const avgRad = Math.atan2(sumSin / history.length, sumCos / history.length);
         let smoothedHeading = avgRad * (180 / Math.PI);
-        if (smoothedHeading < 0) smoothedHeading += 360;
+        if (smoothedHeading < 0) smoothedHeading += 360; // Normalize to 0-360
 
         setHeading(smoothedHeading);
     };
     
     const handleMotion = (event: DeviceMotionEvent) => {
         const now = Date.now();
+        // Throttle handler to improve performance
         if (now - lastMotionTime.current < 100 || !event.acceleration || isCancelled) return;
         lastMotionTime.current = now;
 
+        // Debounce steps to prevent over-counting
         if (now - lastStepTimestamp.current < 600) return; 
 
         const z = event.acceleration.z ?? 0;
@@ -93,11 +96,13 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
     const startAR = async () => {
       try {
         setArError(null);
+        // Request permissions for motion sensors on iOS
         if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
             const permission = await (DeviceOrientationEvent as any).requestPermission();
             if (permission !== 'granted') throw new Error("Motion sensor access denied.");
         }
 
+        // Get camera stream
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         if (isCancelled) {
           stream.getTracks().forEach(track => track.stop());
@@ -107,6 +112,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
         
+        // Use 'deviceorientationabsolute' for true north if available, otherwise fallback
         const orientationEventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
         window.addEventListener(orientationEventName, handleOrientation as EventListener);
         window.addEventListener('devicemotion', handleMotion);
@@ -125,9 +131,10 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
     startAR();
 
+    // Cleanup function: essential for stopping sensors and camera
     return () => {
       isCancelled = true;
-      headingHistoryRef.current = [];
+      headingHistoryRef.current = []; // Clear history
       const orientationEventName = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
       window.removeEventListener(orientationEventName, handleOrientation as EventListener);
       window.removeEventListener('devicemotion', handleMotion);
@@ -140,7 +147,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }, [navState]);
   
   const handleStartARClick = () => {
-    setSteps(10); // Reset steps
+    setSteps(10); // Reset steps for the journey
     stepPhase.current = 'DOWN';
     lastStepTimestamp.current = 0;
     setNavState('NAVIGATING');
@@ -243,6 +250,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
     if (heading !== null && !isArrived) {
         const targetHeading = destination ? roomLayout[destination].heading : 0;
         let angleDiff = targetHeading - heading;
+        // Normalize angle difference to be between -180 and 180 for correct rotation
         if (angleDiff > 180) angleDiff -= 360;
         if (angleDiff < -180) angleDiff += 360;
   
@@ -311,7 +319,6 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
       </div>
     );
   };
-
 
   switch (navState) {
     case 'SELECTION': return renderSelection();
