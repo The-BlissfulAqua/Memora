@@ -1,8 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera } from '@capacitor/camera';
-// fix: Import PluginListenerHandle to correctly type the motion sensor event listener.
-import { Capacitor, PluginListenerHandle } from '@capacitor/core';
-import { Motion, AccelListenerEvent } from '@capacitor/motion';
 
 interface ARNavigationProps {
   onBack: () => void;
@@ -15,10 +11,10 @@ const destinations = ['Kitchen', 'Bathroom', 'Bedroom', 'Living Room'];
 // Simple house layout with coordinates and target compass headings for AR
 // Headings: 0=North, 90=East, 180=South, 270=West
 const roomLayout: { [key: string]: { x: number; y: number; heading: number } } = {
-    'Living Room': { x: 77.5, y: 85, heading: 350 }, // Almost North
-    'Bedroom': { x: 222.5, y: 85, heading: 10 },    // Also almost North
-    'Kitchen': { x: 77.5, y: 315, heading: 170 },   // South-ish
-    'Bathroom': { x: 222.5, y: 315, heading: 190 }, // South-ish
+    'Living Room': { x: 77.5, y: 85, heading: 296 }, // Target is NW
+    'Bedroom': { x: 222.5, y: 85, heading: 10 },    
+    'Kitchen': { x: 77.5, y: 315, heading: 170 },   
+    'Bathroom': { x: 222.5, y: 315, heading: 190 }, 
 };
 
 const startPoint = roomLayout['Living Room'];
@@ -27,56 +23,63 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const [navState, setNavState] = useState<NavState>('SELECTION');
   const [destination, setDestination] = useState<string | null>(null);
 
+  // State for AR view
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [arError, setArError] = useState<string | null>(null);
   const [steps, setSteps] = useState(10);
-  const lastStepRef = useRef(0);
+  
+  // Refs for reliable step detection
+  const stepPhase = useRef<'UP' | 'DOWN'>('DOWN');
+  const lastStepTimestamp = useRef(0);
 
-  // Effect for setting up and tearing down AR features (camera, compass, accelerometer)
+
+  // Effect for setting up and tearing down AR features (camera, compass, motion)
   useEffect(() => {
-    let orientationHandler: ((event: DeviceOrientationEvent) => void) | null = null;
-    // fix: Changed from storing an ID string to storing the listener handle object itself.
-    let accelHandler: PluginListenerHandle | null = null;
-    
-    if (navState === 'NAVIGATING') {
-        // Compass Listener
-        orientationHandler = (event: DeviceOrientationEvent) => {
-            if (event.alpha !== null) setHeading(event.alpha);
-        };
-        window.addEventListener('deviceorientation', orientationHandler);
-        
-        // Automatic Step Detection Listener
-        const STEP_THRESHOLD = 2.0; // m/s^2 acceleration change
-        const STEP_COOLDOWN = 400; // ms between steps
-        
-        const stepDetectionHandler = (event: AccelListenerEvent) => {
-            const { x, y, z } = event.acceleration;
-            const magnitude = Math.sqrt(x * x + y * y + z * z);
-            const now = Date.now();
-            
-            if (magnitude > STEP_THRESHOLD && now - lastStepRef.current > STEP_COOLDOWN) {
-                lastStepRef.current = now;
-                setSteps(prev => (prev > 0 ? prev - 1 : 0));
-            }
-        };
-
-        // fix: The `addListener` method returns a `PluginListenerHandle` which is stored to be removed later. The handle does not have an `id` property.
-        Motion.addListener('accel', stepDetectionHandler).then(handler => {
-            accelHandler = handler;
-        });
+    if (navState !== 'NAVIGATING') {
+      return;
     }
+
+    let isMounted = true;
+
+    // Compass Listener
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+        if (event.alpha !== null && isMounted) {
+            setHeading(event.alpha);
+        }
+    };
+    window.addEventListener('deviceorientation', handleOrientation);
     
+    // Reliable Step Detection Listener
+    const handleMotion = (event: DeviceMotionEvent) => {
+        if (!event.acceleration || !isMounted) return;
+
+        const now = Date.now();
+        // Cooldown of 400ms to prevent detecting a single step multiple times
+        if (now - lastStepTimestamp.current < 400) return;
+
+        const z = event.acceleration.z ?? 0;
+        const HIGH_THRESHOLD = 11.5; // m/s^2 - high point of a step
+        const LOW_THRESHOLD = 8.0;   // m/s^2 - low point of a step
+
+        // This simple state machine detects the "up then down" pattern of a step
+        if (stepPhase.current === 'DOWN' && z > HIGH_THRESHOLD) {
+            stepPhase.current = 'UP';
+        } else if (stepPhase.current === 'UP' && z < LOW_THRESHOLD) {
+            stepPhase.current = 'DOWN';
+            lastStepTimestamp.current = now;
+            setSteps(prev => (prev > 0 ? prev - 1 : 0));
+        }
+    };
+    window.addEventListener('devicemotion', handleMotion);
+
     // Cleanup function
     return () => {
-        if (orientationHandler) {
-            window.removeEventListener('deviceorientation', orientationHandler);
-        }
-        // fix: To remove a listener, call the `.remove()` method on the handle object. `Motion.removeListener` does not exist.
-        if (accelHandler) {
-            accelHandler.remove();
-        }
+        isMounted = false;
+        window.removeEventListener('deviceorientation', handleOrientation);
+        window.removeEventListener('devicemotion', handleMotion);
+        
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
@@ -90,7 +93,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const handleStartARClick = async () => {
     setArError(null);
     try {
-        // --- 1. SENSOR PERMISSIONS (COMPASS & MOTION) ---
+        // Request motion sensor permissions (required on iOS 13+)
         if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
             const permission = await (DeviceOrientationEvent as any).requestPermission();
             if (permission !== 'granted') {
@@ -98,32 +101,26 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
             }
         }
 
-        // --- 2. CAMERA PERMISSIONS & STREAM ---
-        if (Capacitor.isNativePlatform()) {
-            const permissionStatus = await Camera.requestPermissions();
-            if (permissionStatus.camera !== 'granted') {
-                throw new Error("Camera access was denied.");
-            }
-        }
-        
+        // Request camera and start stream
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-
-        // --- START NAVIGATION ---
         streamRef.current = stream;
+        
         if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            // Explicitly play the video to ensure it starts
+            // This is crucial to ensure the video plays on all devices
             await videoRef.current.play();
         }
         
         setSteps(10); // Reset steps for new journey
+        stepPhase.current = 'DOWN';
+        lastStepTimestamp.current = 0;
         setNavState('NAVIGATING');
 
     } catch (err: any) {
         console.error("Error starting AR:", err);
-        let message = "Could not start AR Navigation. Please check permissions.";
+        let message = "Could not start AR. Please check permissions in your settings.";
         if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-            message = "Permission was denied. Please allow camera and sensor access.";
+            message = "Permission denied. Please allow camera and motion sensor access.";
         } else if (err.message) {
             message = err.message;
         }
@@ -134,33 +131,25 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   const handleBack = () => {
     setSteps(10);
     setHeading(null);
+    setArError(null);
     if (navState === 'NAVIGATING') {
         setNavState('BLUEPRINT');
     } else if (navState === 'BLUEPRINT') {
         setNavState('SELECTION');
         setDestination(null);
-        setArError(null);
     } else {
         onBack();
     }
   }
-  
-  const MiniMap = () => {
-    // This is a simplified version of the blueprint SVG for the minimap
-    return (
-      <svg width="100%" height="100%" viewBox="0 0 300 400" className="bg-[#1E293B]">
-        {Object.entries(roomLayout).map(([name, {x, y}]) => {
-            const isDest = name === destination;
-            const isStart = name === 'Living Room';
-            return <rect key={name} x={x-40} y={y-40} width="80" height="80" fill={isDest ? "#3B82F6" : isStart ? "#10B981" : "#475569"} />;
-        })}
-      </svg>
-    );
-  };
+
+  // --- RENDER LOGIC ---
 
   if (navState === 'SELECTION') {
     return (
       <div className="relative p-4 sm:p-6 bg-slate-900/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl h-[95vh] flex flex-col">
+       <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-slate-700"></div>
+       <div className="absolute bottom-3 right-3 w-2 h-2 rounded-full bg-slate-700"></div>
+
         <header className="flex items-center mb-6 border-b border-slate-700/50 pb-4">
             <button onClick={onBack} className="text-slate-400 text-sm p-2 rounded-full hover:bg-slate-800/50 transition-colors mr-2 flex items-center gap-1">
                 <span className='text-lg'>&larr;</span> Back
@@ -184,7 +173,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }
 
   if (navState === 'BLUEPRINT') {
-    // The blueprint view remains the same as it was well-designed.
+    // The blueprint view remains the same.
     const endPoint = destination ? roomLayout[destination] : startPoint;
     const angleRad = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
     const angleDeg = -90 - (angleRad * 180 / Math.PI);
@@ -207,27 +196,24 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
             <h2 className="text-2xl font-bold text-white">Map to {destination}</h2>
         </header>
         <main className="flex-grow flex flex-col items-center justify-center overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center">
-                <svg width="100%" height="100%" viewBox="0 0 300 400" className="max-w-full max-h-[60vh]">
-                    <g transform={svgTransform} style={{ transition: 'transform 0.7s ease-in-out' }}>
-                        <rect width="300" height="400" fill="#1E293B" />
-                        {Object.entries(roomLayout).map(([name, {x, y}]) => {
-                            const width = 135, height = 150, rectX = x - width/2, rectY = y - height/2;
-                            const isDest = name === destination;
-                            return (<g key={name}>
-                                <rect x={rectX} y={rectY} width={width} height={height} fill={isDest ? "rgba(59, 130, 246, 0.2)" : "none"} stroke={isDest ? "#3B82F6" : "#475569"} strokeWidth="2" />
-                                <text x={x} y={y} textAnchor="middle" fill="#94A3B8" fontSize="16" transform={`rotate(${snappedAngleDeg} ${x} ${y})`}>{name}</text>
-                            </g>)
-                        })}
-                        <path d={`M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`} fill="none" stroke="#34D399" strokeWidth="4" strokeDasharray="8 4">
-                            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" />
-                        </path>
-                        <polygon points="-12,-6 0,0 -12,6" fill="#34D399" transform={`translate(${endPoint.x}, ${endPoint.y}) rotate(${endAngleDeg})`} />
-                        <circle cx={startPoint.x} cy={startPoint.y} r="8" fill="#10B981" />
-                        <text x={startPoint.x} y={startPoint.y} textAnchor="middle" dy="4" fill="white" fontSize="12" fontWeight="bold" transform={`rotate(${snappedAngleDeg} ${startPoint.x} ${startPoint.y})`}>You</text>
-                    </g>
-                </svg>
-            </div>
+            <svg width="100%" height="100%" viewBox="0 0 300 400" className="max-w-full max-h-[60vh]">
+                <g transform={svgTransform} style={{ transition: 'transform 0.7s ease-in-out' }}>
+                    <rect width="300" height="400" fill="#1E293B" />
+                    {Object.entries(roomLayout).map(([name, {x, y}]) => {
+                        const width = 135, height = 150, rectX = x - width/2, rectY = y - height/2;
+                        return (<g key={name}>
+                            <rect x={rectX} y={rectY} width={width} height={height} fill={name === destination ? "rgba(59, 130, 246, 0.2)" : "none"} stroke={name === destination ? "#3B82F6" : "#475569"} strokeWidth="2" />
+                            <text x={x} y={y} textAnchor="middle" fill="#94A3B8" fontSize="16" transform={`rotate(${snappedAngleDeg} ${x} ${y})`}>{name}</text>
+                        </g>)
+                    })}
+                    <path d={`M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`} fill="none" stroke="#34D399" strokeWidth="4" strokeDasharray="8 4">
+                        <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" />
+                    </path>
+                    <polygon points="-12,-6 0,0 -12,6" fill="#34D399" transform={`translate(${endPoint.x}, ${endPoint.y}) rotate(${endAngleDeg})`} />
+                    <circle cx={startPoint.x} cy={startPoint.y} r="8" fill="#10B981" />
+                    <text x={startPoint.x} y={startPoint.y} textAnchor="middle" dy="4" fill="white" fontSize="12" fontWeight="bold" transform={`rotate(${snappedAngleDeg} ${startPoint.x} ${startPoint.y})`}>You</text>
+                </g>
+            </svg>
         </main>
         {arError && <div className="my-2 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg text-sm text-center">{arError}</div>}
         <footer className='mt-4'>
@@ -238,15 +224,33 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
   }
 
   // --- NAVIGATING STATE ---
-  const targetHeading = destination ? roomLayout[destination].heading : 0;
   const isArrived = steps <= 0;
-  const currentHeading = heading ?? 0;
-  let arrowRotation = targetHeading - currentHeading;
-  const isCorrectDirection = Math.abs(arrowRotation % 360) < 20 || Math.abs(arrowRotation % 360) > 340;
+  let arrowRotation = 0;
+  let isCorrectDirection = false;
+
+  if (heading !== null && !isArrived) {
+      const targetHeading = destination ? roomLayout[destination].heading : 0;
+      let angleDiff = targetHeading - heading;
+      
+      // Normalize angle difference to be between -180 and 180 for the shortest turn
+      if (angleDiff > 180) angleDiff -= 360;
+      if (angleDiff < -180) angleDiff += 360;
+
+      const DIRECTION_THRESHOLD = 20; // 20 degrees of leeway
+      
+      // If user is facing the correct direction, snap arrow to point up
+      if (Math.abs(angleDiff) <= DIRECTION_THRESHOLD) {
+          isCorrectDirection = true;
+          arrowRotation = 0;
+      } else {
+          isCorrectDirection = false;
+          arrowRotation = angleDiff; // Point in the direction of the turn
+      }
+  }
 
   return (
     <div className="relative w-full h-[95vh] bg-black overflow-hidden rounded-3xl shadow-2xl flex flex-col justify-between border border-slate-700/50">
-      <video ref={videoRef} muted playsInline className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500" style={{ opacity: isArrived ? 0.3 : 1 }} />
+      <video ref={videoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500" style={{ opacity: isArrived ? 0.3 : 1 }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"></div>
       
       <header className="relative z-10 p-4 flex justify-between items-center text-white">
@@ -259,7 +263,7 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
 
       {isArrived && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-20">
-              <div className="text-7xl mb-4">🎉</div>
+              <div className="text-7xl mb-4 animate-bounce">🎉</div>
               <h3 className="text-4xl font-bold">You have arrived!</h3>
               <button 
                 onClick={() => { setNavState('SELECTION'); setDestination(null); }}
@@ -271,14 +275,14 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
       )}
 
       <footer className="relative z-10 p-6 text-white">
-        <div className='flex items-end justify-center h-24'>
-            {!isArrived && heading !== null && (
+        <div className={`flex items-end justify-center h-24 transition-opacity duration-300 ${isArrived ? 'opacity-0' : 'opacity-100'}`}>
+            {heading !== null && (
                 <div 
                     className="transition-transform duration-500 ease-out"
                     style={{ transform: `rotate(${arrowRotation}deg)` }}
                 >
                      <svg width="80" height="80" viewBox="0 0 100 100" className="drop-shadow-lg">
-                        <polygon points="50,0 100,100 50,75 0,100" className={`transition-colors duration-300 ${isCorrectDirection ? 'fill-green-400' : 'fill-white/80'}`}/>
+                        <polygon points="50,0 100,100 50,75 0,100" className={`transition-all duration-300 ${isCorrectDirection ? 'fill-green-400 animate-pulse' : 'fill-white/80'}`}/>
                     </svg>
                 </div>
             )}
@@ -286,13 +290,10 @@ const ARNavigation: React.FC<ARNavigationProps> = ({ onBack }) => {
         <div className="mt-4 p-4 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between">
             <div>
                 <p className="text-sm text-slate-300">Steps Remaining</p>
-                <p className="text-5xl font-bold">{steps}</p>
+                <p className="text-5xl font-bold transition-all duration-200" key={steps}>{steps}</p>
             </div>
             <div className="h-12 text-center flex items-center justify-center w-48">
-                {heading === null && <p className="text-slate-400">Initializing compass...</p>}
-                {isCorrectDirection && !isArrived && heading !== null &&
-                    <p className="text-green-400 font-semibold text-lg animate-pulse">Walk Forward</p>
-                }
+                {heading === null && <p className="text-slate-400">Initializing...</p>}
             </div>
         </div>
       </footer>
